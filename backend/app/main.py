@@ -1,0 +1,59 @@
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from app.api.v1 import api_v1
+from app.core.config import settings
+from app.core.database import Base, engine
+
+# 让 ORM 类被注册到 Base.metadata（MVP 用 create_all；P1.30 之后切 alembic）
+import app.modules.admin.models  # noqa: F401
+import app.modules.channel_pack.models  # noqa: F401
+from app.modules.channel_pack.adapters.object_store import init_default_store
+from app.modules.channel_pack.adapters.walle import init_default_signer
+
+STORAGE_DIR = Path(__file__).resolve().parent.parent / "storage"
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    init_default_store(str(STORAGE_DIR), public_url_prefix="/storage")
+    init_default_signer(stub=True)
+    yield
+
+
+app = FastAPI(
+    title="movie backend",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/healthz")
+def healthz() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.get("/readyz")
+def readyz() -> dict[str, str]:
+    return {"status": "ready"}
+
+
+# StaticFiles：本地存储映射到 /storage/*；生产换 OSS+CDN（公开端 download_url 自然变）
+STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/storage", StaticFiles(directory=str(STORAGE_DIR)), name="storage")
+
+app.include_router(api_v1)

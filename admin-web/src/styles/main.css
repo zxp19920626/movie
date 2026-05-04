@@ -1,0 +1,60 @@
+/* movie 全局变量 */
+:root {
+  --mv-primary: #2D6CDF;
+  --mv-primary-hover: #2356b8;
+  --mv-dark: #1f2330;
+  --mv-dark-light: #353a4a;
+  --mv-bg: #f0f2f5;
+  --el-color-primary: #2D6CDF;
+  --el-color-primary-light-3: #5b8de8;
+  --el-color-primary-light-5: #88aef0;
+  --el-color-primary-light-7: #b4cef7;
+  --el-color-primary-light-8: #cbddfa;
+  --el-color-primary-light-9: #e4eefc;
+  --el-color-primary-dark-2: #2356b8;
+}
+
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--mv-bg);
+  color: #333;
+}
+
+.mv-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+.mv-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+}
+.mv-page-subtitle {
+  font-size: 13px;
+  color: #909399;
+  margin: 0;
+}
+.mv-card {
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.mv-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--mv-primary);
+  --el-button-border-color: var(--mv-primary);
+  --el-button-hover-bg-color: var(--mv-primary-hover);
+  --el-button-hover-border-color: var(--mv-primary-hover);
+}

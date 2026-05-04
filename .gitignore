@@ -1,0 +1,61 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===== Python (backend) =====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.uv-cache/
+.python-version-local
+*.db
+*.db-journal
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+
+# Backend secrets & local artifacts
+backend/.env
+backend/dev.db
+backend/storage/
+
+# ===== Node (admin-web) =====
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+admin-web/src/auto-imports.d.ts
+admin-web/src/components.d.ts
+.npm-debug.log
+.pnpm-debug.log
+yarn-error.log
+
+# ===== Secrets — 永远不许进 Git =====
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+.env
+.env.local
+.env.*.local
+
+# ===== Logs / runtime =====
+logs/
+*.log
+.cache/
+tmp/
