@@ -72,13 +72,13 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'admin/users',
         name: 'admin-users',
-        component: () => import('@/modules/admin/views/Placeholder.vue'),
+        component: () => import('@/modules/admin/views/AdminsView.vue'),
         meta: { title: '管理员', permission: 'permissions.view' },
       },
       {
         path: 'admin/roles',
         name: 'admin-roles',
-        component: () => import('@/modules/admin/views/Placeholder.vue'),
+        component: () => import('@/modules/admin/views/RolesView.vue'),
         meta: { title: '角色权限', permission: 'permissions.view' },
       },
       {

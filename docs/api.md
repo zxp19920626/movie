@@ -2,8 +2,8 @@
 
 > 自动生成，不要手改。改路由后跑 `cd backend && uv run python scripts/export_api_docs.py` 重新生成。
 
-端点总数：**49**  
-分组数：**8**  
+端点总数：**58**  
+分组数：**9**  
 文档版本：v0.2.0
 
 - 在线交互文档：本地起服后访问 `http://127.0.0.1:8000/docs`
@@ -18,6 +18,20 @@ _后台账号登录 / 当前管理员_
 | --- | --- | --- | --- |
 | `POST` | `/api/v1/admin/auth/login` | Admin Login | `admin_login_api_v1_admin_auth_login_post` |
 | `GET` | `/api/v1/admin/auth/me` | Admin Me | `admin_me_api_v1_admin_auth_me_get` |
+
+## admin-rbac
+
+| 方法 | 路径 | 说明 | operationId |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/admin/rbac/admins` | List Admins | `list_admins_api_v1_admin_rbac_admins_get` |
+| `POST` | `/api/v1/admin/rbac/admins` | Create Admin | `create_admin_api_v1_admin_rbac_admins_post` |
+| `DELETE` | `/api/v1/admin/rbac/admins/{admin_id}` | Disable Admin | `disable_admin_api_v1_admin_rbac_admins__admin_id__delete` |
+| `PATCH` | `/api/v1/admin/rbac/admins/{admin_id}` | Update Admin | `update_admin_api_v1_admin_rbac_admins__admin_id__patch` |
+| `GET` | `/api/v1/admin/rbac/permissions/tree` | Get Permission Tree | `get_permission_tree_api_v1_admin_rbac_permissions_tree_get` |
+| `GET` | `/api/v1/admin/rbac/roles` | List Roles | `list_roles_api_v1_admin_rbac_roles_get` |
+| `POST` | `/api/v1/admin/rbac/roles` | Create Role | `create_role_api_v1_admin_rbac_roles_post` |
+| `DELETE` | `/api/v1/admin/rbac/roles/{role_id}` | Delete Role | `delete_role_api_v1_admin_rbac_roles__role_id__delete` |
+| `PATCH` | `/api/v1/admin/rbac/roles/{role_id}` | Update Role | `update_role_api_v1_admin_rbac_roles__role_id__patch` |
 
 ## admin-users
 

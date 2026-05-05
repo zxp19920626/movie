@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.modules.admin.rbac_routers import router as admin_rbac_router
 from app.modules.admin.routers import router as admin_auth_router
 from app.modules.channel_pack.routers.admin import router as cp_admin_router
 from app.modules.channel_pack.routers.app import router as cp_app_router
@@ -28,3 +29,6 @@ api_v1.include_router(user_admin_router, prefix="/admin", tags=["admin-users"])
 
 # 影片资源 — 后台
 api_v1.include_router(content_admin_router, prefix="/admin/content", tags=["content-admin"])
+
+# RBAC — 角色 / 管理员 / 权限树（P3.14c）
+api_v1.include_router(admin_rbac_router, prefix="/admin/rbac", tags=["admin-rbac"])

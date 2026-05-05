@@ -15,13 +15,13 @@
 ## 进度总览
 
 - [ ] **P0 账户与域名**（19 条）— 全部待用户线下完成（注册账号/买域名/开服务）
-- [✓] **P1 仓库 + 骨架 + 抽象层 day 1**（30 条）— **27/30 已完成 + 3 跳过**：1.1/1.2/1.4/1.6-1.28 全套（含 Dockerfile / 抽象层 6 件套 / trace_id+structlog / import-linter / GitHub CI / docker-compose.dev / alembic 多 head）；1.3 [-]文档暂不动 / 1.5 [-]仓库已存在 / 1.29 [-]依赖 0.2 阿里云账户
-- [~] **P2 App 分发平台先 ship 上线**（44 条）⭐ 最大阶段 — **MVP 子集已完成 30/44**：5 个表 + HMAC + 规则引擎 + 全套 admin/cp API + 5 个 admin 页面 + 端到端验证；Celery/Redis/alembic/STS/CDN/单测 留待生产化
-- [~] **P3 user 模块 + 第二次部署 + RBAC 6 模块**（20 条）— **MVP 子集已完成 17/20**：admin (3.3/3.4/3.12/3.13/3.14/3.14a/3.14b/3.14d) + user (3.1/3.5/3.6/3.7/3.8/3.9/3.10/3.11) + admin/users CRUD + 3.16 docs/api.md 自动导出；剩 3.2 alembic migration / 3.14c 权限管理页 / 3.15 第二次部署
-- [ ] **P4 content 模块 + VOD 同步 + 地区可见性 + 二次审核**（20 条）
-- [ ] **P5 App 端播放 + 首页聚合 + 搜索 + 第三次部署**（14 条）
+- [✓] **P1 仓库 + 骨架 + 抽象层 day 1**（30 条）— **27/30 已完成 + 3 跳过**
+- [~] **P2 App 分发平台先 ship 上线**（44 条）⭐ — **34/44**（新增 2.11 Redis impl / 2.12 invalidate_pattern / 2.13 单测 / 2.21 单测；剩 2.6 alembic[-暂缓] / 2.17 CDN / 2.19 Celery / 2.23 CDN 跳转 / 2.28 OSS STS / 2.39-2.42 部署链 — 全部依赖 P0 阿里云账户）
+- [~] **P3 user 模块 + 第二次部署 + RBAC 6 模块**（20 条）— **18/20**（新增 3.14c 权限管理页；剩 3.2 alembic[-暂缓] / 3.15 第二次部署[依赖 P2.41]）
+- [~] **P4 content 模块 + VOD 同步 + 地区可见性 + 二次审核**（20 条）— **9/20**：4.7 模型 / 4.9-4.10 media_provider / 4.15-4.18 admin API / 4.19 影片管理页 / 4.20 分类管理页；剩 4.1-4.6 VOD 控制台[依赖 P0] / 4.8 alembic[-暂缓] / 4.11-4.14 同步双轨[依赖 P0]
+- [ ] **P5 App 端播放 + 首页聚合 + 搜索 + 第三次部署**（14 条）— 等 P0 + P4 后端真接入
 - [ ] **P5+ 埋点 / 分析事件 / 后台仪表盘**（6 条）
-- [ ] **P6 上线后红线兜底**（12 条）
+- [~] **P6 上线后红线兜底**（12 条）— **3/12**：6.10 HMAC 轮换演练脚本 / 6.11 Locust 压测 / 6.12 应急手册；剩 6.1-6.9 全部依赖 P0
 - [ ] **P7 增长期触发任务**（6 条，DAU > 10w 才做）
 
 ---
@@ -183,7 +183,10 @@
 - [✓] **3.14a** RBAC 权限树定义：6 大模块（dashboard / cp / content / user / membership / permissions），扁平化字符串权限存于 a_admin_roles.permissions
 - [✓] **3.14b** 4 个 seed 角色：Super_Admin（is_super_admin=true 短路所有检查）/ Content_Manager / Global_Ops / Service_Auditor（只读）
 - [✓] **3.14d** 前端路由 / 组件级 v-if 权限校验（router beforeEach + auth.hasPermission 已落地）
-- [ ] **3.14c** admin-web 权限管理页（角色 CRUD + 权限矩阵勾选 + 成员分配）
+- [✓] **3.14c** admin-web 权限管理页：
+        - backend：admin/permissions.py（6 模块 × 多权限点 + 4 seed 角色定义）+ admin/rbac_routers.py（roles CRUD + admin-users CRUD + permission tree GET）
+        - frontend：RolesView（角色列表 + 权限矩阵勾选含模块全选）+ AdminsView（管理员 CRUD + 角色分配 + app_scope 多租户隔离 + 软删 suspended）
+        - 状态机：super_admin 短路 + 内置角色不可删 + 删除前校验是否仍有用户绑定 + 自禁锁防 lockout
 
 ### 3D 部署
 - [ ] **3.15** 第二次部署：通过 GitHub Actions 自动部署（依赖 P2.41）
