@@ -89,10 +89,10 @@
 - [✓] **1.26** admin-web build & dev 已跑通（pnpm dev 监听 :5174，已验证登录链路）
 
 ### 1F 本地编排 + RDS + Alembic 多 head
-- [ ] **1.27** `infra/docker-compose.dev.yml`（fastapi + redis；MySQL 用 RDS 不用本地）— MVP 阶段先用 SQLite 直跑，后续补
+- [✓] **1.27** `infra/docker-compose.dev.yml`（fastapi + redis；MySQL 用 RDS 不用本地）
 - [✓] **1.28** `backend/.env.example`（MVP 版：DATABASE_URL / JWT_SECRET / SEED_* / CORS_*）
-- [ ] **1.29** 在阿里云开通 RDS for MySQL 8.0 — 待 P0 完成账户开通后做；当前用 SQLite
-- [ ] **1.30** **alembic init + 配 multi-head**（4 个目录）— MVP 阶段用 `Base.metadata.create_all` 简化；要做 schema 演化时补 alembic
+- [-] **1.29** 在阿里云开通 RDS for MySQL 8.0 ← 原因：依赖 0.2 阿里云国际版账号（用户线下做）；当前用 SQLite，alembic 配置已就位待切
+- [✓] **1.30** **alembic init + 配 multi-head**（4 个目录：channel_pack/user/content/admin）— alembic.ini + env.py + script.py.mako + README 已就位；MVP 仍用 `Base.metadata.create_all`，schema 演化时切到 alembic
 
 ---
 
