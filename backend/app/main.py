@@ -33,6 +33,11 @@ async def lifespan(_: FastAPI):
     init_default_store(str(STORAGE_DIR), public_url_prefix="/storage")
     init_default_signer(stub=True)
     configure_default_providers()
+    if settings.redis_url:
+        from app.shared.cache_service import configure_default_cache
+
+        configure_default_cache(settings.redis_url)
+        log.info("app.startup.redis", url=settings.redis_url)
     log.info("app.startup", storage_dir=str(STORAGE_DIR))
     yield
     log.info("app.shutdown")

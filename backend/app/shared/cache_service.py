@@ -77,3 +77,15 @@ def get_cache() -> ICacheService:
 def set_cache(cache: ICacheService) -> None:
     global _default_cache
     _default_cache = cache
+
+
+def configure_default_cache(redis_url: str | None = None) -> ICacheService:
+    """启动时调一次。配了 REDIS_URL 就装 RedisCacheService，否则留进程内字典。"""
+    if not redis_url:
+        return _default_cache
+    from app.shared.redis_cache import RedisCacheService
+
+    cache = RedisCacheService(redis_url)
+    cache.ping()  # 启动期就把连不上的问题暴露
+    set_cache(cache)
+    return cache

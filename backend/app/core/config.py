@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     # ===== DB / 基础 =====
     database_url: str = "sqlite:///./dev.db"
     log_level: str = "INFO"
+    # 留空则用进程内 InMemoryCacheService；指 redis://... 切到 RedisCacheService
+    redis_url: str = ""
 
     # ===== JWT =====
     jwt_secret: str = "dev-secret-please-change-me"

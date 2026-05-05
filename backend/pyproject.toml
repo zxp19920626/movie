@@ -18,6 +18,9 @@ dependencies = [
     "alembic>=1.13",
 ]
 
+[project.optional-dependencies]
+redis = ["redis>=5.0"]
+
 [dependency-groups]
 dev = [
     "ruff>=0.6",
@@ -47,7 +50,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "**/seed.py" = ["S105", "S106"]
-"**/scripts/**" = ["S101", "S105", "S106"]
+"**/scripts/**" = ["S101", "S105", "S106", "S310", "S311"]
 # pydantic-settings 字段默认值是 dev 占位，生产由 env 覆盖
 "app/core/config.py" = ["S105", "S106"]
 # walle CLI 是受信任的本机二进制，subprocess 调用 by design
