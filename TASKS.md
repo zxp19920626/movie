@@ -53,11 +53,11 @@
 ## P1 仓库 + 骨架 + 抽象层 day 1
 
 ### 1A 仓库初始化
-- [ ] **1.1** `git init` + 写 `.gitignore`（python、node、env、IDE、*.keystore、*.jks、_*.db）
-- [ ] **1.2** 创建顶层目录：`backend/ admin-web/ infra/ docs/ scripts/ .github/workflows/`
-- [ ] **1.3** Review/调整已生成的 `README.md` 和 `PROMPT.md`、`TASKS.md`
-- [ ] **1.4** 写 `.editorconfig`
-- [ ] **1.5** 第一次 `git push` 到 GitHub（依赖 0.6）
+- [✓] **1.1** `git init` + 写 `.gitignore`（python、node、env、IDE、*.keystore、*.jks、_*.db）
+- [✓] **1.2** 创建顶层目录：`backend/ admin-web/ infra/ docs/ scripts/ .github/workflows/`（infra/ scripts/ .github/ 随后续任务陆续创建）
+- [-] **1.3** Review/调整已生成的 `README.md` 和 `PROMPT.md`、`TASKS.md` ← 原因：本批次不动文档，后续 docs/api.md 一并修订
+- [✓] **1.4** 写 `.editorconfig`
+- [-] **1.5** 第一次 `git push` 到 GitHub（依赖 0.6） ← 原因：仓库已存在并有提交（fc44623），等价完成
 
 ### 1B backend 骨架
 - [✓] **1.6** `backend/pyproject.toml`（用 uv，Python 3.12+）
