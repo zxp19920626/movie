@@ -54,13 +54,13 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'content/videos',
         name: 'content-videos',
-        component: () => import('@/modules/content/views/Placeholder.vue'),
+        component: () => import('@/modules/content/views/VideosView.vue'),
         meta: { title: '影片管理', permission: 'content.view' },
       },
       {
         path: 'content/categories',
         name: 'content-categories',
-        component: () => import('@/modules/content/views/Placeholder.vue'),
+        component: () => import('@/modules/content/views/CategoriesView.vue'),
         meta: { title: '分类管理', permission: 'content.view' },
       },
       {

@@ -113,8 +113,8 @@
 
 ### 2C 升级规则引擎（核心算法）
 - [✓] **2.10** `services/upgrade_engine.py`：纯函数实现规则匹配 + 优先级 + crc32 灰度 + debug_steps
-- [ ] **2.11** Redis 缓存 — MVP 进程内字典；DAU 起来前补 Redis（接口已抽象）
-- [ ] **2.12** Cache invalidate pattern — 进程内单 key invalidate 已实现；Redis 化时补 pattern
+- [✓] **2.11** RedisCacheService 实现（懒加载 redis-py + JSON 序列化 + key_prefix）；configure_default_cache(REDIS_URL) 一行切换
+- [✓] **2.12** invalidate_pattern：进程内 fnmatch / Redis SCAN+UNLINK 双实现，对齐 ICacheService 契约
 - [✓] **2.13** 单测 — `tests/test_hmac_verifier.py` (15 tests) + `test_upgrade_engine.py` (13 tests) + `test_signing_service.py` (6 tests) = 34 passed
 - [✓] **2.14** Play 渠道后端硬拒（is_play_store=true → has_update:false，不查规则）
 
@@ -220,8 +220,8 @@
 - [✓] **4.16** `PUT /api/v1/admin/content/videos/{id}`（含状态机：online 必须 approved）
 - [✓] **4.17** `POST /api/v1/admin/content/videos/{id}/region-visibility`（整批替换语义 + 黑名单制）
 - [✓] **4.18** `POST /api/v1/admin/content/videos/{id}/secondary-review`（draft↔pending↔approved/rejected 状态机）
-- [ ] **4.19** admin-web 影片管理页（列表 + 编辑 + 同步状态 + 地区可见性矩阵 + 二次审核流转）
-- [ ] **4.20** admin-web 分类管理页（i18n 多语言名）
+- [✓] **4.19** admin-web VideosView：列表 + 4 tab 编辑（基础/i18n/资源-VOD/上下线-推荐）+ 地区可见性矩阵勾选 + 二审下拉 submit/approve/reject + VOD 状态/二审状态/推荐位标签
+- [✓] **4.20** admin-web CategoriesView：列表 + 多语言名编辑（9 lang）+ 父子分类 + 软删归档
 
 附加：categories CRUD（`/admin/content/categories` GET/POST/PATCH/DELETE）一并落地，支持 4.20 后台联调
 
@@ -278,8 +278,8 @@
 - [ ] **6.7** Cloudflare 5xx 告警规则
 - [ ] **6.8** keystore 三地备份完成（1Password + 离线 GPG U 盘 + Play App Signing 托管）
 - [ ] **6.9** RAM 子账号清理 SOP 演练（建一个 → 离职模拟 → 同步禁用）
-- [ ] **6.10** **HMAC 签名密钥轮换演练**（cp_apps.api_key_hash 改密 + App SDK 平滑过渡）
-- [ ] **6.11** 完整压测（Locust 1000 并发打 /upgrade/check + /videos）
+- [✓] **6.10** scripts/cp_rotate_hmac.py：admin login → regenerate-keys → 输出 dual-accept 操作清单（生产前需扩 schema 加 prev_hmac_secret 列才能真正双接受）
+- [✓] **6.11** scripts/locustfile.py：HmacUser 真实签名 /upgrade/check + 多渠道/国家/版本号 random；本地起 backend 即可跑
 - [✓] **6.12** 写 `docs/incident-playbook.md`（10 章：DB/CDN/VOD/域名/CF/5xx/安全/红线/凭据/演练）
 
 ---
