@@ -202,12 +202,12 @@
 - [ ] **4.6** 写 `docs/vod-console-guide.md`（VOD 控制台中英操作手册）
 
 ### 4B 数据模型
-- [ ] **4.7** SQLAlchemy 模型：ct_categories（i18n）, **ct_videos（标准字段：code 业务编码 / title_i18n / description_i18n / type / category_id / tags / score / rating / release_year / release_date / duration_min / director / cast_list / studio / cover_url / poster_url / trailer_url / vod_file_id + 同步快照 + required_tier(占位) / status / secondary_review_status / featured(bool) / trending(bool) / views / recommend_priority）**, ct_video_episodes（含 season/episode_no/duration_min/vod_file_id）, ct_watch_history（user_id, video_id, episode_id, position_sec, duration_sec, updated_at）, **ct_region_visibility**（video × country 矩阵）
-- [ ] **4.8** alembic migration（content 子目录）
+- [✓] **4.7** SQLAlchemy 模型：ct_categories / ct_videos（含全套业务字段 + 二审 + 推荐位 + VOD 快照）/ ct_video_episodes / ct_watch_history / ct_region_visibility 5 张表全部就位
+- [-] **4.8** alembic migration（content 子目录）← 原因：同 2.6 / 3.2，alembic 配置已就位，首迁待生产 RDS 上线时一并生成
 
 ### 4C media_provider 抽象层（A1' 落地）
-- [ ] **4.9** `app/shared/media_provider/aliyun_vod.py`：实现 IMediaProvider + IPlayTokenProvider
-- [ ] **4.10** Wire-up：`media_service` 依赖注入；业务代码只用 service 不直接读 vod_file_id
+- [✓] **4.9** `app/shared/media_provider/aliyun_vod.py`：AliyunVodProvider + AliyunPlayTokenProvider stub（issue_play_token 返 stub PlayToken 让业务可拼通；P4 接 SDK 后替换 _ensure_client 即可）
+- [✓] **4.10** `media_provider/service.py`：configure_default_providers / get_media_provider / get_play_token_provider；main.py lifespan 启动时调；测试可 set_*_provider 注入 fake
 
 ### 4D VOD ↔ 本地同步双轨
 - [ ] **4.11** `POST /internal/vod/webhook`：验签 + 处理 FileUploadComplete / TranscodeComplete / FileDeleted 事件
