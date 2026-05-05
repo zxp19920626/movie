@@ -2,8 +2,8 @@
 
 > 自动生成，不要手改。改路由后跑 `cd backend && uv run python scripts/export_api_docs.py` 重新生成。
 
-端点总数：**58**  
-分组数：**9**  
+端点总数：**62**  
+分组数：**10**  
 文档版本：v0.2.0
 
 - 在线交互文档：本地起服后访问 `http://127.0.0.1:8000/docs`
@@ -59,6 +59,15 @@ _后台 — 用户管理（admin token 鉴权）_
 | `GET` | `/api/v1/admin/content/videos/{video_id}/region-visibility` | Get Region Visibility | `get_region_visibility_api_v1_admin_content_videos__video_id__region_visibility_get` |
 | `POST` | `/api/v1/admin/content/videos/{video_id}/region-visibility` | Set Region Visibility | `set_region_visibility_api_v1_admin_content_videos__video_id__region_visibility_post` |
 | `POST` | `/api/v1/admin/content/videos/{video_id}/secondary-review` | Secondary Review | `secondary_review_api_v1_admin_content_videos__video_id__secondary_review_post` |
+
+## content-public
+
+| 方法 | 路径 | 说明 | operationId |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/videos` | List Videos | `list_videos_api_v1_videos_get` |
+| `GET` | `/api/v1/videos/home` | Home Aggregate | `home_aggregate_api_v1_videos_home_get` |
+| `GET` | `/api/v1/videos/search` | Search Videos | `search_videos_api_v1_videos_search_get` |
+| `GET` | `/api/v1/videos/{video_id}` | Get Video | `get_video_api_v1_videos__video_id__get` |
 
 ## cp-admin
 

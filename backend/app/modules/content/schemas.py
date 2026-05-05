@@ -168,9 +168,96 @@ class SecondaryReviewOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ===== App 端公开 schemas（按用户 country/lang 选 i18n，剔除内部字段）=====
+
+
+class VideoPublicOut(BaseModel):
+    id: int
+    code: str
+    title: str
+    description: str
+    type: str
+    category_id: int | None
+    tags: list[str]
+    score: float | None
+    rating: str
+    release_year: int | None
+    duration_min: int | None
+    director: str
+    cast_list: list[str]
+    studio: str
+    cover_url: str
+    poster_url: str
+    trailer_url: str
+    required_tier: str
+    featured: bool
+    trending: bool
+    views: int
+    # 不暴露 vod_file_id（拿 play-token 换播放凭证）
+    # 不暴露 secondary_review_status / status / created_by 等内部字段
+
+
+class VideoPublicList(BaseModel):
+    items: list[VideoPublicOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class HomeSection(BaseModel):
+    code: str  # featured / continue_watching / trending / top10
+    title: str
+    items: list[VideoPublicOut]
+
+
+class HomeAggregateOut(BaseModel):
+    sections: list[HomeSection]
+
+
+# ===== 播放凭证 =====
+
+
+class PlayTokenOut(BaseModel):
+    file_id: str
+    token: str
+    play_url: str
+    expires_at: datetime
+    ttl_sec: int
+
+
+# ===== 观看历史 =====
+
+
+class WatchHistoryUpsert(BaseModel):
+    video_id: int
+    episode_id: int | None = None
+    position_sec: int = Field(ge=0)
+    duration_sec: int = Field(ge=0)
+
+
+class WatchHistoryItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    video_id: int
+    episode_id: int | None
+    position_sec: int
+    duration_sec: int
+    updated_at: datetime
+
+
+class WatchHistoryList(BaseModel):
+    items: list[WatchHistoryItem]
+    total: int
+
+
 # ===== 通用 =====
 
 
 class IdResponse(BaseModel):
     id: int
+    extra: dict[str, Any] | None = None
+
+
+class OkResponse(BaseModel):
+    ok: bool = True
     extra: dict[str, Any] | None = None

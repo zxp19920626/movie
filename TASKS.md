@@ -233,11 +233,11 @@
 ## P5 App 端播放 + 第三次部署
 
 ### 5A App 端 API
-- [ ] **5.1** `GET /api/v1/videos`（列表，分页，按用户 country 过滤 ct_region_visibility + secondary_review_status=approved + vod_status=ready）
-- [ ] **5.2** `GET /api/v1/videos/{id}`
-- [ ] **5.3** `GET /api/v1/videos/{id}/play-token`（调 media_service 拿 PlayToken；5min 过期 + IP 绑定）
-- [ ] **5.3a** **`GET /api/v1/videos/home` 首页聚合接口**（返回 featured + continueWatching + trending + top10，单接口减 App 往返）
-- [ ] **5.3b** `GET /api/v1/videos/search?q=`（按 title / director / cast / tags 多字段检索）
+- [✓] **5.1** `GET /api/v1/videos`（按 user.country 过滤 region_visibility + status/review/vod_status 三重门 + 分类/类型筛选）
+- [✓] **5.2** `GET /api/v1/videos/{id}`（不可见返 404 而非 403，避免泄露存在性）
+- [ ] **5.3** `GET /api/v1/videos/{id}/play-token`（待 round 8）
+- [✓] **5.3a** `GET /api/v1/videos/home` 首页聚合：featured + continueWatching + trending + top10 单接口
+- [✓] **5.3b** `GET /api/v1/videos/search?q=` 多字段检索：code/director/studio/cast/tags/title_i18n/description_i18n（SQLite ilike + JSON 文本兜底；MySQL 上线后换 JSON_CONTAINS / 全文索引）
 
 ### 5B 防盗链
 - [ ] **5.4** UA / 包签名 header 校验中间件

@@ -1,0 +1,106 @@
+"""content 模块共用服务函数（i18n 选择 / 可见性过滤 / 公开序列化）"""
+
+from __future__ import annotations
+
+from sqlalchemy import Select, exists, select
+from sqlalchemy.orm import Session
+
+from app.modules.content.models import CtRegionVisibility, CtVideo
+from app.modules.content.schemas import VideoPublicOut
+
+
+def pick_locale(i18n: dict[str, str] | None, lang: str | None, fallback: str = "en") -> str:
+    """按优先级取语言文案：精确 lang → 顶层基底（如 zh-CN→zh）→ fallback → 任意一条 → 空串。"""
+    if not i18n:
+        return ""
+    if lang:
+        if lang in i18n:
+            return i18n[lang]
+        # zh-CN → zh
+        base = lang.split("-")[0].lower()
+        if base in i18n:
+            return i18n[base]
+    if fallback in i18n:
+        return i18n[fallback]
+    # 任意一条总比空白好
+    for v in i18n.values():
+        if v:
+            return v
+    return ""
+
+
+def to_public(video: CtVideo, *, lang: str | None = None) -> VideoPublicOut:
+    return VideoPublicOut(
+        id=video.id,
+        code=video.code,
+        title=pick_locale(video.title_i18n, lang),
+        description=pick_locale(video.description_i18n, lang),
+        type=video.type,
+        category_id=video.category_id,
+        tags=video.tags or [],
+        score=video.score,
+        rating=video.rating,
+        release_year=video.release_year,
+        duration_min=video.duration_min,
+        director=video.director,
+        cast_list=video.cast_list or [],
+        studio=video.studio,
+        cover_url=video.cover_url,
+        poster_url=video.poster_url,
+        trailer_url=video.trailer_url,
+        required_tier=video.required_tier,
+        featured=video.featured,
+        trending=video.trending,
+        views=video.views,
+    )
+
+
+def apply_public_filters(stmt: Select, *, country: str | None) -> Select:
+    """App 端可见性约束（合并到任意 select on CtVideo 上）：
+    - status=online 上线
+    - secondary_review_status=approved 通过二审
+    - vod_status=ready 转码 OK（短片/电影直挂；剧集走 episode 自身 vod_status）
+    - 地区可见性：
+        * 若 video 0 行 region_visibility → 视为对所有国家可见（早期默认开放）
+        * 若有行 → 必须包含 (country=user.country AND visible=true)
+    """
+    has_any_region = exists().where(CtRegionVisibility.video_id == CtVideo.id).correlate(CtVideo)
+    has_visible_for_country = (
+        exists()
+        .where(
+            CtRegionVisibility.video_id == CtVideo.id,
+            CtRegionVisibility.country_code == (country or "").upper(),
+            CtRegionVisibility.visible.is_(True),
+        )
+        .correlate(CtVideo)
+    )
+
+    stmt = stmt.where(
+        CtVideo.status == "online",
+        CtVideo.secondary_review_status == "approved",
+        CtVideo.vod_status == "ready",
+    )
+    # 0 行 OR 该国家可见
+    stmt = stmt.where((~has_any_region) | has_visible_for_country)
+    return stmt
+
+
+def is_video_visible_for(db: Session, video: CtVideo, country: str | None) -> bool:
+    """单条命中检查（详情页用）。"""
+    if video.status != "online" or video.secondary_review_status != "approved":
+        return False
+    if video.vod_status != "ready":
+        return False
+    rows = db.scalar(select(exists().where(CtRegionVisibility.video_id == video.id)))
+    if not rows:
+        return True
+    visible = db.scalar(
+        select(
+            exists().where(
+                CtRegionVisibility.video_id == video.id,
+                CtRegionVisibility.country_code == (country or "").upper(),
+                CtRegionVisibility.visible.is_(True),
+            )
+        )
+    )
+    return bool(visible)
