@@ -29,9 +29,13 @@ from app.modules.content.services import (
     to_public,
 )
 from app.shared.media_provider.service import get_play_token_provider
+from app.shared.middleware.app_sign import verify_app_sign
 from app.shared.middleware.rate_limit import rate_limit
 
-router = APIRouter()
+# 整组 App 端 video 路由都强制包签名（dev 无 APP_SIGN_SECRET 自动放行）
+_APP_GUARDS = [Depends(verify_app_sign)]
+
+router = APIRouter(dependencies=_APP_GUARDS)
 
 
 @router.get("", response_model=VideoPublicList)

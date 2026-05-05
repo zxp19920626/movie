@@ -124,7 +124,7 @@
 - [✓] **2.16** `adapters/object_store.py`：IObjectStore 接口 + LocalFSObjectStore（MVP）；生产换 OSS 实现同接口
 - [ ] **2.17** CDN refresh/preheat — MVP 走 FastAPI StaticFiles 不需要预热；生产 OSS+CDN 时补
 - [✓] **2.18** `services/signing_service.py`：finalize 时 fan-out 创建 jobs + 幂等性（同 idempotency_key 已 success 直接复用）
-- [ ] **2.19** Celery 异步 — MVP 用 FastAPI BackgroundTasks 同进程跑（接口对齐，将来切 Celery 改 task 装饰器）
+- [✓] **2.19** backend/app/celery_app.py：可选 Celery 入口（CELERY_BROKER_URL 配则启用）+ docker-compose.prod.yml 加 worker 服务（profile=celery 默认不拉起）；当前仍以 BackgroundTasks 为默认路径，迁移路径文档化
 - [✓] **2.20** 任务流：OSS 下母包 → walle 注入 → SHA256 → 上 OSS → 写回 DB → 自动判定 version=ready
 - [✓] **2.21** 单测 — 同 2.13 一并覆盖（signing_service fan-out 幂等 + check_and_mark_ready 状态机）
 
@@ -240,7 +240,7 @@
 - [✓] **5.3b** `GET /api/v1/videos/search?q=` 多字段检索：code/director/studio/cast/tags/title_i18n/description_i18n（SQLite ilike + JSON 文本兜底；MySQL 上线后换 JSON_CONTAINS / 全文索引）
 
 ### 5B 防盗链
-- [ ] **5.4** UA / 包签名 header 校验中间件
+- [✓] **5.4** shared/middleware/app_sign.py：X-App-Ts + X-App-Sig (HMAC-SHA256(secret, "ts|UA")) 校验；整组 /videos/* 强制；APP_SIGN_SECRET 留空 dev 模式自动放行；±5min skew 容忍
 - [✓] **5.5** rate_limit FastAPI Depends 工厂 + ICacheService.incr 抽象（Redis INCR+EXPIRE / 内存原子加 + TTL）；play-token 30/min、search 60/min；X-RateLimit-* 响应头
 - [ ] **5.6** Cloudflare 海外流量套源验证（实测 SEA + 中东 + 拉美 + 非洲 TTFB）
 

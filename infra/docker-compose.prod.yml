@@ -77,5 +77,37 @@ services:
       retries: 5
     logging: *default-logging
 
+  # P2.19 Celery worker — 可选；CELERY_BROKER_URL 配了才真有用
+  worker:
+    image: ${BACKEND_IMAGE:-registry.ap-southeast-1.aliyuncs.com/your-org/movie-backend:latest}
+    container_name: movie-worker
+    restart: always
+    command: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ALIYUN_VOD_AK_ID: ${ALIYUN_VOD_AK_ID:-}
+      ALIYUN_VOD_AK_SECRET: ${ALIYUN_VOD_AK_SECRET:-}
+    volumes:
+      - backend_storage:/app/storage
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # celery -A inspect ping 简单存活检查
+      test: ["CMD-SHELL", "celery -A app.celery_app inspect ping -d celery@$$HOSTNAME -t 5 || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging: *default-logging
+    profiles:
+      # 默认不启用；docker compose --profile celery up -d 才拉起
+      - celery
+
 volumes:
   backend_storage:

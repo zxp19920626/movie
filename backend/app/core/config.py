@@ -15,6 +15,16 @@ class Settings(BaseSettings):
     # 阿里云 VOD webhook 共享 secret（HMAC 签名）；留空则只在 dev 模式接受未签名请求
     vod_webhook_secret: str = ""
 
+    # App SDK 包签名校验（防 curl/脚本 直接打 /videos 接口）；留空则 dev 模式放行
+    # 客户端：X-App-Ts: unix_ts; X-App-Sig: hex(hmac_sha256(secret, f"{ts}|{user_agent}"))
+    app_sign_secret: str = ""
+    # 时钟漂移容忍（秒）
+    app_sign_skew_sec: int = 300
+
+    # Celery（可选）；留空走 FastAPI BackgroundTasks。设了就用 Redis broker 跑独立 worker
+    celery_broker_url: str = ""
+    celery_result_backend: str = ""
+
     # ===== JWT =====
     jwt_secret: str = "dev-secret-please-change-me"
     jwt_algorithm: str = "HS256"
