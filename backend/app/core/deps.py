@@ -15,7 +15,9 @@ def _decode_or_401(credentials: HTTPAuthorizationCredentials | None) -> dict:
     try:
         return decode_token(credentials.credentials)
     except PyJWTError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"invalid token: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=f"invalid token: {e}"
+        ) from e
 
 
 def get_current_admin_id(
@@ -26,8 +28,8 @@ def get_current_admin_id(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="wrong scope")
     try:
         return int(payload["sub"])
-    except (KeyError, ValueError, TypeError):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid sub")
+    except (KeyError, ValueError, TypeError) as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid sub") from e
 
 
 def get_current_admin(
@@ -53,8 +55,8 @@ def get_current_user_id(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="wrong scope")
     try:
         return int(payload["sub"])
-    except (KeyError, ValueError, TypeError):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid sub")
+    except (KeyError, ValueError, TypeError) as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid sub") from e
 
 
 def get_current_user(

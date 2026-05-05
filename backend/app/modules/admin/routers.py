@@ -26,13 +26,9 @@ def admin_login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginRe
     stmt = select(AdminUser).where(AdminUser.email == payload.email.lower())
     admin = db.scalars(stmt).one_or_none()
     if admin is None or not verify_password(payload.password, admin.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="邮箱或密码错误"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="邮箱或密码错误")
     if admin.status != "active":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="账号已禁用"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="账号已禁用")
     admin.last_login_at = datetime.now(UTC)
     db.commit()
 

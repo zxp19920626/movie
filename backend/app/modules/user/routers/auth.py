@@ -106,7 +106,7 @@ def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)) -> 
     try:
         claims = verify_google_id_token(payload.id_token)
     except ValueError as e:
-        raise HTTPException(401, str(e))
+        raise HTTPException(401, str(e)) from e
     sub = str(claims.get("sub", ""))
     email = (claims.get("email") or "").lower() or None
     if not sub:
@@ -132,11 +132,7 @@ def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)) -> 
                 country=payload.country,
                 app_id=payload.app_id,
             )
-        db.add(
-            UserOauth(
-                user_id=user.id, provider="google", provider_uid=sub, raw_profile=claims
-            )
-        )
+        db.add(UserOauth(user_id=user.id, provider="google", provider_uid=sub, raw_profile=claims))
 
     if user.status != "active":
         raise HTTPException(401, "账号已禁用")
@@ -209,10 +205,11 @@ def refresh(
 ) -> TokensOut:
     # 这里不用 Depends 取 token，因为前端可能在 body 传（也支持 header）
     from app.core.security import decode_token
+
     try:
         claims = decode_token(payload.refresh_token)
     except Exception as e:
-        raise HTTPException(401, f"invalid refresh token: {e}")
+        raise HTTPException(401, f"invalid refresh token: {e}") from e
     if claims.get("scope") != "user_refresh":
         raise HTTPException(401, "wrong scope")
     jti = claims.get("jti")

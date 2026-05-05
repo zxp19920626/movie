@@ -13,7 +13,9 @@ from app.modules.channel_pack.models import (
 )
 
 
-def compute_idempotency_key(app_id: int, version_code: int, channel_code: str, master_sha256: str) -> str:
+def compute_idempotency_key(
+    app_id: int, version_code: int, channel_code: str, master_sha256: str
+) -> str:
     raw = f"{app_id}|{version_code}|{channel_code}|{master_sha256}"
     return hashlib.sha256(raw.encode()).hexdigest()
 

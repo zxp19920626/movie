@@ -85,12 +85,8 @@ def list_users(
     if app_id is not None:
         stmt = stmt.where(User.app_id == app_id)
     total = len(list(db.scalars(stmt).all()))
-    rows = list(
-        db.scalars(stmt.order_by(User.id.desc()).limit(limit).offset(offset)).all()
-    )
-    return AdminUserListOut(
-        items=[AdminUserOut.model_validate(u) for u in rows], total=total
-    )
+    rows = list(db.scalars(stmt.order_by(User.id.desc()).limit(limit).offset(offset)).all())
+    return AdminUserListOut(items=[AdminUserOut.model_validate(u) for u in rows], total=total)
 
 
 @router.get("/users/{user_id}", response_model=AdminUserDetailOut)
@@ -109,9 +105,7 @@ def get_user(
             .order_by(UserDevice.last_seen_at.desc())
         ).all()
     )
-    user_dict = {
-        c.name: getattr(user, c.name) for c in user.__table__.columns
-    }
+    user_dict = {c.name: getattr(user, c.name) for c in user.__table__.columns}
     return AdminUserDetailOut(
         **user_dict,
         devices=[AdminUserDeviceOut.model_validate(d) for d in devices],

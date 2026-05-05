@@ -37,9 +37,7 @@ class User(Base):
     """u_users：C 端用户。一个邮箱 / 手机 一行。"""
 
     __tablename__ = "u_users"
-    __table_args__ = (
-        Index("ix_u_users_phone", "phone"),
-    )
+    __table_args__ = (Index("ix_u_users_phone", "phone"),)
 
     id: Mapped[int] = _bigint_pk()
     uuid: Mapped[str] = mapped_column(String(36), unique=True, index=True)  # 公开 ID
@@ -90,9 +88,7 @@ class UserOauth(Base):
     """
 
     __tablename__ = "u_user_oauth"
-    __table_args__ = (
-        UniqueConstraint("provider", "provider_uid", name="uq_u_oauth_provider_uid"),
-    )
+    __table_args__ = (UniqueConstraint("provider", "provider_uid", name="uq_u_oauth_provider_uid"),)
 
     id: Mapped[int] = _bigint_pk()
     user_id: Mapped[int] = mapped_column(ForeignKey("u_users.id"), index=True)
@@ -129,9 +125,7 @@ class OtpCode(Base):
     """u_otp_codes：手机 OTP 验证码（5 分钟有效，5 次错作废）"""
 
     __tablename__ = "u_otp_codes"
-    __table_args__ = (
-        Index("ix_u_otp_phone_active", "phone", "verified", "expires_at"),
-    )
+    __table_args__ = (Index("ix_u_otp_phone_active", "phone", "verified", "expires_at"),)
 
     id: Mapped[int] = _bigint_pk()
     phone: Mapped[str] = mapped_column(String(32), index=True)

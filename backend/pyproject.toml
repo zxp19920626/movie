@@ -28,3 +28,39 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".venv", "storage", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "S"]
+ignore = [
+    "E501",   # line length（formatter 处理）
+    "S101",   # assert 在测试中常见
+    "B008",   # FastAPI 的 Depends() 默认值
+    "N818",   # exception 命名
+    "UP046",  # PEP 695 type params；Generic[T] 兼容性更广，按需迁移
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/seed.py" = ["S105", "S106"]
+"**/scripts/**" = ["S101", "S105", "S106"]
+# pydantic-settings 字段默认值是 dev 占位，生产由 env 覆盖
+"app/core/config.py" = ["S105", "S106"]
+# walle CLI 是受信任的本机二进制，subprocess 调用 by design
+"app/modules/channel_pack/adapters/walle.py" = ["S603", "S607"]
+# google_auth mock 模式：解析失败 fallback 到下一种策略，记日志成本不值得
+"app/modules/user/services/google_auth.py" = ["S110"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true
+exclude = ["\\.venv/", "storage/", "scripts/"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

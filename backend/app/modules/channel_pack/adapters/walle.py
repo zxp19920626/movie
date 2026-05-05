@@ -42,7 +42,16 @@ class WalleCliSigner:
 
         Path(out_apk_path).parent.mkdir(parents=True, exist_ok=True)
         result = subprocess.run(
-            ["java", "-jar", self.walle_jar_path, "put", "-c", channel_code, in_apk_path, out_apk_path],
+            [
+                "java",
+                "-jar",
+                self.walle_jar_path,
+                "put",
+                "-c",
+                channel_code,
+                in_apk_path,
+                out_apk_path,
+            ],
             capture_output=True,
             text=True,
             check=False,

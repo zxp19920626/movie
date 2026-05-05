@@ -116,7 +116,9 @@ def create_app(
     db.add(app)
     db.commit()
     db.refresh(app)
-    return AppCreateResponse(app=AppOut.model_validate(app), api_key=api_key, hmac_secret=hmac_secret)
+    return AppCreateResponse(
+        app=AppOut.model_validate(app), api_key=api_key, hmac_secret=hmac_secret
+    )
 
 
 @router.get("/apps/{app_id}", response_model=AppOut)
@@ -287,8 +289,8 @@ def upload_version(
 
     try:
         cl = json.loads(changelog_i18n) if changelog_i18n else {}
-    except json.JSONDecodeError:
-        raise HTTPException(400, "changelog_i18n 不是合法 JSON")
+    except json.JSONDecodeError as e:
+        raise HTTPException(400, "changelog_i18n 不是合法 JSON") from e
 
     # 写文件到 object store
     store = get_default_store()
@@ -466,9 +468,7 @@ def list_signing_jobs(
     if status_filter:
         stmt = stmt.where(CpApkSigningJob.status == status_filter)
     items = list(db.scalars(stmt.order_by(CpApkSigningJob.id.desc())).all())
-    return SigningJobList(
-        items=[SigningJobOut.model_validate(j) for j in items], total=len(items)
-    )
+    return SigningJobList(items=[SigningJobOut.model_validate(j) for j in items], total=len(items))
 
 
 @router.post("/apps/{app_id}/signing-jobs/{job_id}/retry", response_model=SigningJobOut)

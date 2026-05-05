@@ -1,0 +1,48 @@
+[importlinter]
+root_packages =
+    app
+
+# Contract 1：模块边界——channel_pack / user / content 之间互不串门
+# 已知豁免：app.core.deps 持有 user/admin 身份的 Depends，被多模块复用作鉴权入口。
+# 这是身份层尚未抽离前的过渡；待 identity 模块落地后移除以下豁免。
+[importlinter:contract:modules-independent]
+name = channel_pack / user / content modules must not import each other
+type = independence
+modules =
+    app.modules.channel_pack
+    app.modules.user
+    app.modules.content
+ignore_imports =
+    app.core.deps -> app.modules.user.models
+    app.core.deps -> app.modules.admin.models
+
+# Contract 2：channel_pack 业务模块禁止 import admin（admin 是身份管理模块）
+# 已知豁免：身份认证（AdminUser）目前由 admin 模块持有，被多模块共用作 RBAC 主体；
+# 长期方案是抽出独立的 identity 模块，届时移除以下豁免（参见 1.17 IAuthGuard）。
+[importlinter:contract:cp-not-import-admin]
+name = channel_pack must not import admin (except identity-related exemptions)
+type = forbidden
+source_modules =
+    app.modules.channel_pack
+forbidden_modules =
+    app.modules.admin
+ignore_imports =
+    app.modules.channel_pack.deps -> app.modules.admin.models
+    app.modules.channel_pack.routers.admin -> app.modules.admin.models
+    app.core.deps -> app.modules.admin.models
+
+# Contract 3：user / content 不许 import admin（同上保留豁免位）
+[importlinter:contract:user-content-not-import-admin]
+name = user/content must not import admin
+type = forbidden
+source_modules =
+    app.modules.user
+    app.modules.content
+forbidden_modules =
+    app.modules.admin
+ignore_imports =
+    app.modules.user.routers.admin -> app.modules.admin.models
+    app.core.deps -> app.modules.admin.models
+
+# Contract 4：modules 不许 import 其他 modules 子包，必须经 app.core / app.shared
+# （通过 contract 1 已隐含，但 forbidden 类型对外可读性更好）

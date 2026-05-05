@@ -25,7 +25,9 @@ class CpApp(Base):
 
     __tablename__ = "cp_apps"
 
-    id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True
+    )
     tenant_uuid: Mapped[str] = mapped_column(String(36), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(128))
     package_name: Mapped[str] = mapped_column(String(255))  # com.example.app
@@ -42,7 +44,9 @@ class CpChannel(Base):
     __tablename__ = "cp_channels"
     __table_args__ = (UniqueConstraint("app_id", "code", name="uq_cp_channels_app_code"),)
 
-    id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True
+    )
     app_id: Mapped[int] = mapped_column(ForeignKey("cp_apps.id"), index=True)
     code: Mapped[str] = mapped_column(String(32))
     name: Mapped[str] = mapped_column(String(128))
@@ -61,11 +65,11 @@ class CpAppVersion(Base):
     """cp_app_versions：母包版本（每个 version_code 一行）"""
 
     __tablename__ = "cp_app_versions"
-    __table_args__ = (
-        UniqueConstraint("app_id", "version_code", name="uq_cp_versions_app_vc"),
-    )
+    __table_args__ = (UniqueConstraint("app_id", "version_code", name="uq_cp_versions_app_vc"),)
 
-    id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True
+    )
     app_id: Mapped[int] = mapped_column(ForeignKey("cp_apps.id"), index=True)
     version_code: Mapped[int] = mapped_column(Integer)
     version_name: Mapped[str] = mapped_column(String(32))
@@ -76,7 +80,9 @@ class CpAppVersion(Base):
     changelog_i18n: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(16), default="draft")  # draft/signing/ready/archived
     uploaded_by: Mapped[int] = mapped_column(ForeignKey("a_admin_users.id"))
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
     released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
@@ -85,7 +91,9 @@ class CpUpgradeRule(Base):
 
     __tablename__ = "cp_upgrade_rules"
 
-    id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True
+    )
     app_id: Mapped[int] = mapped_column(ForeignKey("cp_apps.id"), index=True)
     name: Mapped[str] = mapped_column(String(128))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -123,7 +131,9 @@ class CpApkSigningJob(Base):
 
     __tablename__ = "cp_apk_signing_jobs"
 
-    id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True
+    )
     app_id: Mapped[int] = mapped_column(ForeignKey("cp_apps.id"), index=True)
     version_code: Mapped[int] = mapped_column(Integer)
     channel_code: Mapped[str] = mapped_column(String(32))

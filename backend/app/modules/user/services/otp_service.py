@@ -8,10 +8,9 @@ import logging
 import secrets
 from datetime import UTC, datetime, timedelta
 
+import bcrypt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
-import bcrypt
 
 from app.core.config import settings
 from app.modules.user.models import OtpCode

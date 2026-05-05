@@ -107,7 +107,9 @@ def check_upgrade(
             )
         ).one_or_none()
         if target is None:
-            steps.append(f"rule#{rule.id} 跳过：target_version_code={rule.target_version_code} 不存在")
+            steps.append(
+                f"rule#{rule.id} 跳过：target_version_code={rule.target_version_code} 不存在"
+            )
             continue
         if target.status != "ready":
             steps.append(f"rule#{rule.id} 跳过：目标版本 status={target.status}")
