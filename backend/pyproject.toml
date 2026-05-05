@@ -54,6 +54,8 @@ ignore = [
 "app/modules/channel_pack/adapters/walle.py" = ["S603", "S607"]
 # google_auth mock 模式：解析失败 fallback 到下一种策略，记日志成本不值得
 "app/modules/user/services/google_auth.py" = ["S110"]
+# tests/：允许中文测试名 / dev 占位密码 / 大写本地变量
+"tests/**" = ["N802", "N806", "S105", "S106", "F401"]
 
 [tool.mypy]
 python_version = "3.12"

@@ -104,7 +104,7 @@
 - [✓] **2.3** `cp_app_versions` 模型（app_id + status state machine + UniqueConstraint(app_id, version_code)）
 - [✓] **2.4** `cp_upgrade_rules` 模型（target + policy + popup_strategy enum + 4 个 i18n 多语言文案字段）
 - [✓] **2.5** `cp_apk_signing_jobs` 模型（含 idempotency_key unique 索引 + cdn_warmup_status）
-- [ ] **2.6** alembic migration — MVP 用 `Base.metadata.create_all`；schema 演化时补 alembic multi-head
+- [-] **2.6** alembic migration ← 原因：alembic 配置已就位（P1.30），但首条迁移最好基于生产 RDS 真实 schema 生成；当前 dev 用 create_all 充足，留待生产前一刻补
 
 ### 2B HMAC 签名 + 多租户中间件
 - [✓] **2.7** `services/hmac_verifier.py`：HMAC-SHA256 + 5min replay 防御 + 常数时间比较
@@ -115,7 +115,7 @@
 - [✓] **2.10** `services/upgrade_engine.py`：纯函数实现规则匹配 + 优先级 + crc32 灰度 + debug_steps
 - [ ] **2.11** Redis 缓存 — MVP 进程内字典；DAU 起来前补 Redis（接口已抽象）
 - [ ] **2.12** Cache invalidate pattern — 进程内单 key invalidate 已实现；Redis 化时补 pattern
-- [ ] **2.13** 单测 — MVP 用 `scripts/cp_test_client.py` 端到端 4 场景验证（升级命中 / 已是最新 / Play 硬拒 / HMAC 错），单元测试待补
+- [✓] **2.13** 单测 — `tests/test_hmac_verifier.py` (15 tests) + `test_upgrade_engine.py` (13 tests) + `test_signing_service.py` (6 tests) = 34 passed
 - [✓] **2.14** Play 渠道后端硬拒（is_play_store=true → has_update:false，不查规则）
 
 ### 2D Walle 渠道签名工作流
@@ -126,7 +126,7 @@
 - [✓] **2.18** `services/signing_service.py`：finalize 时 fan-out 创建 jobs + 幂等性（同 idempotency_key 已 success 直接复用）
 - [ ] **2.19** Celery 异步 — MVP 用 FastAPI BackgroundTasks 同进程跑（接口对齐，将来切 Celery 改 task 装饰器）
 - [✓] **2.20** 任务流：OSS 下母包 → walle 注入 → SHA256 → 上 OSS → 写回 DB → 自动判定 version=ready
-- [ ] **2.21** 单测 — 同 2.13，端到端覆盖
+- [✓] **2.21** 单测 — 同 2.13 一并覆盖（signing_service fan-out 幂等 + check_and_mark_ready 状态机）
 
 ### 2E 公开 API
 - [✓] **2.22** `GET /api/v1/cp/upgrade/check`：HMAC 校验 + 时间戳防 replay + 规则引擎 + i18n 文案按 country 选语言
@@ -163,7 +163,7 @@
 
 ### 3A 数据模型
 - [✓] **3.1** SQLAlchemy 模型：u_users（含 app_id FK + country/preferred_language）, u_user_oauth, u_devices, u_otp_codes, u_refresh_tokens
-- [ ] **3.2** alembic migration — MVP 用 create_all；schema 演化时补
+- [-] **3.2** alembic migration ← 原因：同 2.6，等生产 RDS 上线前一刻基于真实 schema 生成首条迁移
 
 ### 3B 认证
 - [✓] **3.3** `app/core/security.py`：JWT access 15m + refresh 30d + scope=admin/user/admin_refresh/user_refresh + jti
@@ -278,7 +278,7 @@
 - [ ] **6.9** RAM 子账号清理 SOP 演练（建一个 → 离职模拟 → 同步禁用）
 - [ ] **6.10** **HMAC 签名密钥轮换演练**（cp_apps.api_key_hash 改密 + App SDK 平滑过渡）
 - [ ] **6.11** 完整压测（Locust 1000 并发打 /upgrade/check + /videos）
-- [ ] **6.12** 写 `docs/incident-playbook.md`（故障应急手册：DB 挂 / CDN 挂 / VOD 挂 / 域名挂 / Cloudflare 挂）
+- [✓] **6.12** 写 `docs/incident-playbook.md`（10 章：DB/CDN/VOD/域名/CF/5xx/安全/红线/凭据/演练）
 
 ---
 

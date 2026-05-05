@@ -25,6 +25,12 @@ from app.modules.channel_pack.models import (
 )
 
 
+def _ensure_utc(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
+
+
 @dataclass
 class UpgradeMatch:
     rule: CpUpgradeRule
@@ -91,11 +97,13 @@ def check_upgrade(
         if rule.country_codes and country and country not in rule.country_codes:
             steps.append(f"rule#{rule.id}('{rule.name}') 跳过：country 不在 {rule.country_codes}")
             continue
-        # 生效时间窗
-        if rule.effective_from and now < rule.effective_from:
+        # 生效时间窗（兼容 SQLite 存 naive：把 naive 当 UTC 处理）
+        ef = _ensure_utc(rule.effective_from)
+        et = _ensure_utc(rule.effective_to)
+        if ef and now < ef:
             steps.append(f"rule#{rule.id}('{rule.name}') 跳过：未到生效时间")
             continue
-        if rule.effective_to and now > rule.effective_to:
+        if et and now > et:
             steps.append(f"rule#{rule.id}('{rule.name}') 跳过：超过生效时间")
             continue
 
