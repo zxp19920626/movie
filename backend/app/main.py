@@ -8,6 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from app.api.v1 import api_v1
 from app.core.config import settings
 from app.core.database import Base, engine
+from app.core.logging import configure_logging, get_logger
+from app.shared.middleware.trace_id import TraceIdMiddleware
 
 # 让 ORM 类被注册到 Base.metadata（MVP 用 create_all；P1.30 之后切 alembic）
 import app.modules.admin.models  # noqa: F401
@@ -19,13 +21,19 @@ from app.modules.channel_pack.adapters.walle import init_default_signer
 STORAGE_DIR = Path(__file__).resolve().parent.parent / "storage"
 
 
+configure_logging(level=settings.log_level)
+log = get_logger("app.main")
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
     STORAGE_DIR.mkdir(parents=True, exist_ok=True)
     init_default_store(str(STORAGE_DIR), public_url_prefix="/storage")
     init_default_signer(stub=True)
+    log.info("app.startup", storage_dir=str(STORAGE_DIR))
     yield
+    log.info("app.shutdown")
 
 
 app = FastAPI(
@@ -33,6 +41,9 @@ app = FastAPI(
     version="0.2.0",
     lifespan=lifespan,
 )
+
+# trace_id 必须最先注册（外层），CORS 之后；这样 CORS 的 OPTIONS 也带 trace_id
+app.add_middleware(TraceIdMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

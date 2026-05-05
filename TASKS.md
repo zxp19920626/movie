@@ -74,8 +74,8 @@
 - [✓] **1.15** `backend/app/core/ids.py`：snowflake/uuid7 ID 生成
 - [✓] **1.16** `backend/app/shared/media_provider/protocol.py`：IMediaProvider, IPlayTokenProvider 接口（占位，实现 P4 写）
 - [✓] **1.17** `backend/app/core/security_protocol.py`：IAuthGuard 接口（user 模块实现）
-- [ ] **1.18** `backend/app/shared/middleware/trace_id.py`：FastAPI 中间件读/生成 X-Request-Id，contextvar 透传到 logger/Sentry
-- [ ] **1.19** structlog JSON 输出 + 标准字段（ts, level, logger, trace_id, module, event）
+- [✓] **1.18** `backend/app/shared/middleware/trace_id.py`：FastAPI 中间件读/生成 X-Request-Id，contextvar 透传到 logger/Sentry
+- [✓] **1.19** structlog JSON 输出 + 标准字段（ts, level, logger, trace_id, module, event）
 
 ### 1D 模块边界 CI 强制
 - [ ] **1.20** `.importlinter` 配置：channel_pack 不许 import user/content/admin；横切关注点必须经 app.core 或 app.shared

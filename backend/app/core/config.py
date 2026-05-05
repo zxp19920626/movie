@@ -8,6 +8,7 @@ class Settings(BaseSettings):
 
     # ===== DB / 基础 =====
     database_url: str = "sqlite:///./dev.db"
+    log_level: str = "INFO"
 
     # ===== JWT =====
     jwt_secret: str = "dev-secret-please-change-me"
