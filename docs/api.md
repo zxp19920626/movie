@@ -2,8 +2,8 @@
 
 > 自动生成，不要手改。改路由后跑 `cd backend && uv run python scripts/export_api_docs.py` 重新生成。
 
-端点总数：**37**  
-分组数：**7**  
+端点总数：**49**  
+分组数：**8**  
 文档版本：v0.2.0
 
 - 在线交互文档：本地起服后访问 `http://127.0.0.1:8000/docs`
@@ -28,6 +28,23 @@ _后台 — 用户管理（admin token 鉴权）_
 | `GET` | `/api/v1/admin/users` | List Users | `list_users_api_v1_admin_users_get` |
 | `GET` | `/api/v1/admin/users/{user_id}` | Get User | `get_user_api_v1_admin_users__user_id__get` |
 | `PATCH` | `/api/v1/admin/users/{user_id}` | Update User | `update_user_api_v1_admin_users__user_id__patch` |
+
+## content-admin
+
+| 方法 | 路径 | 说明 | operationId |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/admin/content/categories` | List Categories | `list_categories_api_v1_admin_content_categories_get` |
+| `POST` | `/api/v1/admin/content/categories` | Create Category | `create_category_api_v1_admin_content_categories_post` |
+| `DELETE` | `/api/v1/admin/content/categories/{cat_id}` | Delete Category | `delete_category_api_v1_admin_content_categories__cat_id__delete` |
+| `PATCH` | `/api/v1/admin/content/categories/{cat_id}` | Update Category | `update_category_api_v1_admin_content_categories__cat_id__patch` |
+| `GET` | `/api/v1/admin/content/videos` | List Videos | `list_videos_api_v1_admin_content_videos_get` |
+| `POST` | `/api/v1/admin/content/videos` | Create Video | `create_video_api_v1_admin_content_videos_post` |
+| `DELETE` | `/api/v1/admin/content/videos/{video_id}` | Delete Video | `delete_video_api_v1_admin_content_videos__video_id__delete` |
+| `GET` | `/api/v1/admin/content/videos/{video_id}` | Get Video | `get_video_api_v1_admin_content_videos__video_id__get` |
+| `PUT` | `/api/v1/admin/content/videos/{video_id}` | Update Video | `update_video_api_v1_admin_content_videos__video_id__put` |
+| `GET` | `/api/v1/admin/content/videos/{video_id}/region-visibility` | Get Region Visibility | `get_region_visibility_api_v1_admin_content_videos__video_id__region_visibility_get` |
+| `POST` | `/api/v1/admin/content/videos/{video_id}/region-visibility` | Set Region Visibility | `set_region_visibility_api_v1_admin_content_videos__video_id__region_visibility_post` |
+| `POST` | `/api/v1/admin/content/videos/{video_id}/secondary-review` | Secondary Review | `secondary_review_api_v1_admin_content_videos__video_id__secondary_review_post` |
 
 ## cp-admin
 

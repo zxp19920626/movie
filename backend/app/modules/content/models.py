@@ -98,7 +98,9 @@ class CtVideo(Base):
     required_tier: Mapped[str] = mapped_column(String(16), default="free")  # free / vip1 / vip2
 
     # 上线 / 二审 状态
-    status: Mapped[str] = mapped_column(String(16), default="draft", index=True)  # draft / online / offline / archived
+    status: Mapped[str] = mapped_column(
+        String(16), default="draft", index=True
+    )  # draft / online / offline / archived
     secondary_review_status: Mapped[str] = mapped_column(
         String(16), default="draft", index=True
     )  # draft / pending / approved / rejected
@@ -117,9 +119,7 @@ class CtVideo(Base):
     recommend_priority: Mapped[int] = mapped_column(Integer, default=0, index=True)
 
     # 审计
-    created_by: Mapped[int | None] = mapped_column(
-        ForeignKey("a_admin_users.id"), nullable=True
-    )
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("a_admin_users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

@@ -63,7 +63,11 @@ class AliyunPlayTokenProvider:
         self.ttl_default_sec = ttl_default_sec
 
     def issue_play_token(
-        self, file_id: str, *, client_ip: str, ttl_sec: int  # noqa: ARG002
+        self,
+        file_id: str,
+        *,
+        client_ip: str,
+        ttl_sec: int,  # noqa: ARG002
     ) -> PlayToken:
         # P4：调阿里云 VOD GetVideoPlayAuth；这里返回 stub
         clock = get_clock()

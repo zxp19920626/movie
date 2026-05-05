@@ -216,12 +216,14 @@
 - [ ] **4.14** admin 手动 "Sync All" 按钮 + 单条 "Pull from VOD" 按钮
 
 ### 4E 后台业务字段 + 地区可见性 + 二次审核
-- [ ] **4.15** `POST /api/v1/admin/content/videos`（创建影片业务记录，绑 vod_file_id）
-- [ ] **4.16** `PUT /api/v1/admin/content/videos/{id}`（编辑业务字段 + 多语言标题/描述）
-- [ ] **4.17** `POST /api/v1/admin/content/videos/{id}/region-visibility`（地区可见性矩阵编辑：video × country 二维勾选）
-- [ ] **4.18** `POST /api/v1/admin/content/videos/{id}/secondary-review`（二次审核流转：draft → pending → approved/rejected）
+- [✓] **4.15** `POST /api/v1/admin/content/videos`（含 code 唯一 / category_id 校验 / vod_file_id）
+- [✓] **4.16** `PUT /api/v1/admin/content/videos/{id}`（含状态机：online 必须 approved）
+- [✓] **4.17** `POST /api/v1/admin/content/videos/{id}/region-visibility`（整批替换语义 + 黑名单制）
+- [✓] **4.18** `POST /api/v1/admin/content/videos/{id}/secondary-review`（draft↔pending↔approved/rejected 状态机）
 - [ ] **4.19** admin-web 影片管理页（列表 + 编辑 + 同步状态 + 地区可见性矩阵 + 二次审核流转）
 - [ ] **4.20** admin-web 分类管理页（i18n 多语言名）
+
+附加：categories CRUD（`/admin/content/categories` GET/POST/PATCH/DELETE）一并落地，支持 4.20 后台联调
 
 ---
 
