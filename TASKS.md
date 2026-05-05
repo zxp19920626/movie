@@ -259,14 +259,14 @@
 ## P5+ 埋点 / 仪表盘（与 P5 并行）
 
 ### 5E 埋点 / 分析事件
-- [ ] **5.13** s_analytics_events 表 + migration（按 event_type/page_code/created_at 加索引）
-- [ ] **5.14** `POST /api/v1/analytics/track`（公开 + optionalAuth，事件类型枚举校验，限流防刷）
-- [ ] **5.15** App / admin-web 客户端埋点封装（page_view + play_start/complete + search + upgrade_check + ad_*）
+- [✓] **5.13** s_analytics_events 表（4 个 composite index：type+time / user+time / app+time / page+time；行级追加只插不更）
+- [✓] **5.14** `POST /api/v1/analytics/track`：公开 + optionalAuth + 16 种事件类型白名单 + 100/min/IP 限流 + 单条/批量（最多 50）
+- [-] **5.15** App / admin-web 客户端埋点封装 ← 原因：admin-web 部分等业务页面铺开后再加；App 部分由 App 团队接
 
 ### 5F 后台仪表盘
-- [ ] **5.16** `GET /api/v1/admin/stats/overview`（DAU / 新订阅 / 收入 / 广告 PV，从 s_analytics_events 聚合）
-- [ ] **5.17** `GET /api/v1/admin/stats/trends`（30 天趋势 + 留存曲线 + 广告位分布）
-- [ ] **5.18** admin-web 仪表盘 4 KPI 卡 + 4 ECharts 图
+- [✓] **5.16** `GET /admin/stats/overview`：DAU/DAA/play_start/search/ad_pv/upgrade_check（subscriptions/revenue 占位待 P5+ 订阅模块）
+- [✓] **5.17** `GET /admin/stats/trends`：日粒度 trend；4 个 series（play_start/search/upgrade_check/ad_pv）；zero-fill 不断点
+- [✓] **5.18** admin-web DashboardView：6 KPI 卡（含 DAU/DAA）+ 4 ECharts line 图 + period 切换（24h/7d/30d）+ trend 切换（7/14/30/90d）
 
 ---
 

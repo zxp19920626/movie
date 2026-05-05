@@ -16,8 +16,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'dashboard',
         name: 'dashboard',
-        component: () => import('@/modules/admin/views/DashboardPlaceholder.vue'),
-        meta: { title: '数据看板' },
+        component: () => import('@/modules/analytics/views/DashboardView.vue'),
+        meta: { title: '数据看板', permission: 'dashboard.view' },
       },
       // cp 模块（App 分发平台）已实装
       {

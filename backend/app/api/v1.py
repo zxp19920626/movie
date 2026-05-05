@@ -2,6 +2,8 @@ from fastapi import APIRouter
 
 from app.modules.admin.rbac_routers import router as admin_rbac_router
 from app.modules.admin.routers import router as admin_auth_router
+from app.modules.analytics.routers.admin import router as analytics_admin_router
+from app.modules.analytics.routers.track import router as analytics_track_router
 from app.modules.channel_pack.routers.admin import router as cp_admin_router
 from app.modules.channel_pack.routers.app import router as cp_app_router
 from app.modules.content.routers.admin import router as content_admin_router
@@ -41,6 +43,12 @@ api_v1.include_router(watch_history_router, prefix="/watch-history", tags=["watc
 
 # 用户自助 — App 端
 api_v1.include_router(user_me_router, prefix="/users/me", tags=["user-me"])
+
+# 埋点 — 公开
+api_v1.include_router(analytics_track_router, prefix="/analytics", tags=["analytics-track"])
+
+# 仪表盘 — 后台
+api_v1.include_router(analytics_admin_router, prefix="/admin/stats", tags=["admin-stats"])
 
 # RBAC — 角色 / 管理员 / 权限树（P3.14c）
 api_v1.include_router(admin_rbac_router, prefix="/admin/rbac", tags=["admin-rbac"])

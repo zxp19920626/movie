@@ -12,6 +12,7 @@ from sqlalchemy.pool import StaticPool
 
 # 触发模型注册到 Base.metadata
 import app.modules.admin.models  # noqa: F401
+import app.modules.analytics.models  # noqa: F401
 import app.modules.channel_pack.models  # noqa: F401
 import app.modules.content.models  # noqa: F401
 import app.modules.user.models  # noqa: F401

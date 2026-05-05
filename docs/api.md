@@ -2,8 +2,8 @@
 
 > 自动生成，不要手改。改路由后跑 `cd backend && uv run python scripts/export_api_docs.py` 重新生成。
 
-端点总数：**68**  
-分组数：**12**  
+端点总数：**71**  
+分组数：**14**  
 文档版本：v0.2.0
 
 - 在线交互文档：本地起服后访问 `http://127.0.0.1:8000/docs`
@@ -33,6 +33,13 @@ _后台账号登录 / 当前管理员_
 | `DELETE` | `/api/v1/admin/rbac/roles/{role_id}` | Delete Role | `delete_role_api_v1_admin_rbac_roles__role_id__delete` |
 | `PATCH` | `/api/v1/admin/rbac/roles/{role_id}` | Update Role | `update_role_api_v1_admin_rbac_roles__role_id__patch` |
 
+## admin-stats
+
+| 方法 | 路径 | 说明 | operationId |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/admin/stats/overview` | Overview | `overview_api_v1_admin_stats_overview_get` |
+| `GET` | `/api/v1/admin/stats/trends` | Trends | `trends_api_v1_admin_stats_trends_get` |
+
 ## admin-users
 
 _后台 — 用户管理（admin token 鉴权）_
@@ -42,6 +49,12 @@ _后台 — 用户管理（admin token 鉴权）_
 | `GET` | `/api/v1/admin/users` | List Users | `list_users_api_v1_admin_users_get` |
 | `GET` | `/api/v1/admin/users/{user_id}` | Get User | `get_user_api_v1_admin_users__user_id__get` |
 | `PATCH` | `/api/v1/admin/users/{user_id}` | Update User | `update_user_api_v1_admin_users__user_id__patch` |
+
+## analytics-track
+
+| 方法 | 路径 | 说明 | operationId |
+| --- | --- | --- | --- |
+| `POST` | `/api/v1/analytics/track` | Track | `track_api_v1_analytics_track_post` |
 
 ## content-admin
 

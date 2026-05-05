@@ -79,3 +79,28 @@ def get_current_user_refresh_payload(
     if payload.get("scope") != "user_refresh":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="wrong scope")
     return payload
+
+
+def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+    db: Session = Depends(get_db),
+):
+    """匿名也允许（埋点 / track 等公开端点）；token 合法则返回 user，否则 None。"""
+    if credentials is None:
+        return None
+    try:
+        payload = decode_token(credentials.credentials)
+    except PyJWTError:
+        return None
+    if payload.get("scope") != "user":
+        return None
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, ValueError, TypeError):
+        return None
+    from app.modules.user.models import User
+
+    user = db.get(User, user_id)
+    if user is None or user.status != "active":
+        return None
+    return user
