@@ -14,10 +14,10 @@
 
 ## 进度总览
 
-- [ ] **P0 账户与域名**（19 条）
-- [~] **P1 仓库 + 骨架 + 抽象层 day 1**（30 条；admin-web 由 nextstream/admin 搬迁）— **MVP 子集已完成 11/30**：1.6/1.7/1.8/1.9/1.10/1.22/1.23/1.24/1.25/1.26/1.28
+- [ ] **P0 账户与域名**（19 条）— 全部待用户线下完成（注册账号/买域名/开服务）
+- [✓] **P1 仓库 + 骨架 + 抽象层 day 1**（30 条）— **27/30 已完成 + 3 跳过**：1.1/1.2/1.4/1.6-1.28 全套（含 Dockerfile / 抽象层 6 件套 / trace_id+structlog / import-linter / GitHub CI / docker-compose.dev / alembic 多 head）；1.3 [-]文档暂不动 / 1.5 [-]仓库已存在 / 1.29 [-]依赖 0.2 阿里云账户
 - [~] **P2 App 分发平台先 ship 上线**（44 条）⭐ 最大阶段 — **MVP 子集已完成 30/44**：5 个表 + HMAC + 规则引擎 + 全套 admin/cp API + 5 个 admin 页面 + 端到端验证；Celery/Redis/alembic/STS/CDN/单测 留待生产化
-- [~] **P3 user 模块 + 第二次部署 + RBAC 6 模块**（20 条）— **MVP 子集已完成 16/20**：admin (3.3/3.4/3.12/3.13/3.14/3.14a/3.14b/3.14d) + user (3.1/3.5/3.6/3.7/3.8/3.9/3.10/3.11) + admin/users CRUD（POST/GET/PATCH /admin/users）+ admin-web UsersView（列表/详情/禁用） — alembic / 真 Google/Turnstile/SMS / Redis 黑名单 留待生产化
+- [~] **P3 user 模块 + 第二次部署 + RBAC 6 模块**（20 条）— **MVP 子集已完成 17/20**：admin (3.3/3.4/3.12/3.13/3.14/3.14a/3.14b/3.14d) + user (3.1/3.5/3.6/3.7/3.8/3.9/3.10/3.11) + admin/users CRUD + 3.16 docs/api.md 自动导出；剩 3.2 alembic migration / 3.14c 权限管理页 / 3.15 第二次部署
 - [ ] **P4 content 模块 + VOD 同步 + 地区可见性 + 二次审核**（20 条）
 - [ ] **P5 App 端播放 + 首页聚合 + 搜索 + 第三次部署**（14 条）
 - [ ] **P5+ 埋点 / 分析事件 / 后台仪表盘**（6 条）
@@ -187,7 +187,7 @@
 
 ### 3D 部署
 - [ ] **3.15** 第二次部署：通过 GitHub Actions 自动部署（依赖 P2.41）
-- [ ] **3.16** docs/api.md 用 FastAPI OpenAPI 自动导出 + 中文注释每个端点
+- [✓] **3.16** docs/api.md 用 FastAPI OpenAPI 自动导出（`backend/scripts/export_api_docs.py`，37 端点 / 7 tag 分组；改路由后重跑刷新）
 
 ---
 
