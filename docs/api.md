@@ -2,8 +2,8 @@
 
 > 自动生成，不要手改。改路由后跑 `cd backend && uv run python scripts/export_api_docs.py` 重新生成。
 
-端点总数：**62**  
-分组数：**10**  
+端点总数：**68**  
+分组数：**12**  
 文档版本：v0.2.0
 
 - 在线交互文档：本地起服后访问 `http://127.0.0.1:8000/docs`
@@ -68,6 +68,7 @@ _后台 — 用户管理（admin token 鉴权）_
 | `GET` | `/api/v1/videos/home` | Home Aggregate | `home_aggregate_api_v1_videos_home_get` |
 | `GET` | `/api/v1/videos/search` | Search Videos | `search_videos_api_v1_videos_search_get` |
 | `GET` | `/api/v1/videos/{video_id}` | Get Video | `get_video_api_v1_videos__video_id__get` |
+| `GET` | `/api/v1/videos/{video_id}/play-token` | Get Play Token | `get_play_token_api_v1_videos__video_id__play_token_get` |
 
 ## cp-admin
 
@@ -135,4 +136,19 @@ _C 端设备注册_
 | 方法 | 路径 | 说明 | operationId |
 | --- | --- | --- | --- |
 | `POST` | `/api/v1/devices/register` | Register Device | `register_device_api_v1_devices_register_post` |
+
+## user-me
+
+| 方法 | 路径 | 说明 | operationId |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/users/me` | Me | `me_api_v1_users_me_get` |
+| `POST` | `/api/v1/users/me/delete-request` | Request Delete | `request_delete_api_v1_users_me_delete_request_post` |
+
+## watch-history
+
+| 方法 | 路径 | 说明 | operationId |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/watch-history` | List Watch History | `list_watch_history_api_v1_watch_history_get` |
+| `POST` | `/api/v1/watch-history` | Upsert Watch History | `upsert_watch_history_api_v1_watch_history_post` |
+| `DELETE` | `/api/v1/watch-history/{history_id}` | Delete Watch History | `delete_watch_history_api_v1_watch_history__history_id__delete` |
 

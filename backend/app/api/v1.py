@@ -6,9 +6,11 @@ from app.modules.channel_pack.routers.admin import router as cp_admin_router
 from app.modules.channel_pack.routers.app import router as cp_app_router
 from app.modules.content.routers.admin import router as content_admin_router
 from app.modules.content.routers.app import router as content_app_router
+from app.modules.content.routers.watch_history import router as watch_history_router
 from app.modules.user.routers.admin import router as user_admin_router
 from app.modules.user.routers.auth import router as user_auth_router
 from app.modules.user.routers.devices import router as user_devices_router
+from app.modules.user.routers.me import router as user_me_router
 
 api_v1 = APIRouter(prefix="/api/v1")
 
@@ -33,6 +35,12 @@ api_v1.include_router(content_admin_router, prefix="/admin/content", tags=["cont
 
 # 影片 — App 端
 api_v1.include_router(content_app_router, prefix="/videos", tags=["content-public"])
+
+# 观看历史 — App 端
+api_v1.include_router(watch_history_router, prefix="/watch-history", tags=["watch-history"])
+
+# 用户自助 — App 端
+api_v1.include_router(user_me_router, prefix="/users/me", tags=["user-me"])
 
 # RBAC — 角色 / 管理员 / 权限树（P3.14c）
 api_v1.include_router(admin_rbac_router, prefix="/admin/rbac", tags=["admin-rbac"])

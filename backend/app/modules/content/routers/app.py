@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from sqlalchemy import String, or_, select
 from sqlalchemy.orm import Session
 
@@ -19,6 +19,7 @@ from app.modules.content.models import CtVideo
 from app.modules.content.schemas import (
     HomeAggregateOut,
     HomeSection,
+    PlayTokenOut,
     VideoPublicList,
     VideoPublicOut,
 )
@@ -27,6 +28,7 @@ from app.modules.content.services import (
     is_video_visible_for,
     to_public,
 )
+from app.shared.media_provider.service import get_play_token_provider
 
 router = APIRouter()
 
@@ -187,3 +189,36 @@ def get_video(
         # 不区分 404 / 403，避免泄露存在性
         raise HTTPException(404, "video not found")
     return to_public(v, lang=user.preferred_language)
+
+
+PLAY_TOKEN_TTL_SEC = 300  # 5 分钟
+
+
+@router.get("/{video_id}/play-token", response_model=PlayTokenOut)
+def get_play_token(
+    request: Request,
+    video_id: int = Path(..., ge=1),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> PlayTokenOut:
+    """签发 PlayAuth：5 分钟过期 + IP 绑定（IP 由 IPlayTokenProvider 实现使用）。
+
+    会员等级（required_tier）暂占位放行；P5+ 接入订阅模块后改成
+    `if v.required_tier > user.tier: raise 402 PaymentRequired`。
+    """
+    v = db.get(CtVideo, video_id)
+    if v is None or not is_video_visible_for(db, v, user.country):
+        raise HTTPException(404, "video not found")
+    if not v.vod_file_id:
+        raise HTTPException(409, "video has no vod_file_id (尚未挂 VOD)")
+
+    client_ip = request.client.host if request.client else "0.0.0.0"  # noqa: S104
+    provider = get_play_token_provider()
+    pt = provider.issue_play_token(v.vod_file_id, client_ip=client_ip, ttl_sec=PLAY_TOKEN_TTL_SEC)
+    return PlayTokenOut(
+        file_id=v.vod_file_id,
+        token=pt.token,
+        play_url=pt.play_url,
+        expires_at=pt.expires_at,
+        ttl_sec=PLAY_TOKEN_TTL_SEC,
+    )

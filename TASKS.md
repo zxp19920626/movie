@@ -235,7 +235,7 @@
 ### 5A App 端 API
 - [✓] **5.1** `GET /api/v1/videos`（按 user.country 过滤 region_visibility + status/review/vod_status 三重门 + 分类/类型筛选）
 - [✓] **5.2** `GET /api/v1/videos/{id}`（不可见返 404 而非 403，避免泄露存在性）
-- [ ] **5.3** `GET /api/v1/videos/{id}/play-token`（待 round 8）
+- [✓] **5.3** `GET /api/v1/videos/{id}/play-token`（5min TTL + IP 绑定 + 调 IPlayTokenProvider stub；P5+ 接订阅后加 required_tier 校验）
 - [✓] **5.3a** `GET /api/v1/videos/home` 首页聚合：featured + continueWatching + trending + top10 单接口
 - [✓] **5.3b** `GET /api/v1/videos/search?q=` 多字段检索：code/director/studio/cast/tags/title_i18n/description_i18n（SQLite ilike + JSON 文本兜底；MySQL 上线后换 JSON_CONTAINS / 全文索引）
 
@@ -245,14 +245,14 @@
 - [ ] **5.6** Cloudflare 海外流量套源验证（实测 SEA + 中东 + 拉美 + 非洲 TTFB）
 
 ### 5C 观看历史
-- [ ] **5.7** `POST /api/v1/watch-history`（保留每用户最近 200 条，超出删旧）
+- [✓] **5.7** watch-history POST/GET/DELETE：upsert (user_id, video_id, episode_id) + 自动 prune 保留每用户最近 200 条
 
 ### 5D 部署 + 测试
 - [ ] **5.8** 第三次部署（通过 GitHub Actions）
 - [ ] **5.9** 端到端测试：用户注册登录 → 列表 → 播放 token → 实际播放
 - [ ] **5.10** 中东节点 / 拉美节点 / 非洲节点 实测起播延迟（webpagetest）
 - [ ] **5.11** 隐私政策 + 服务条款上线（依赖 0.17 Termly）
-- [ ] **5.12** App 内"删除账号"接口 `POST /api/v1/users/me/delete-request`（Play 强制）
+- [✓] **5.12** `POST /api/v1/users/me/delete-request`（confirm=true + 软删 status=deleted + 撤销所有 RefreshToken；30 天后异步 PII 真清留 TODO）
 
 ---
 
