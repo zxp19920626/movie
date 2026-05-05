@@ -1,0 +1,27 @@
+# gitleaks 配置（继承默认规则集 + 项目自定义白名单）
+# 文档：https://github.com/gitleaks/gitleaks#configuration
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "项目级豁免（明确解释每条）"
+paths = [
+  # MVP 默认占位密码 / dev 配置（pyproject 已限定 per-file-ignore，这里是 gitleaks 层）
+  '''backend/\.env\.example''',
+  '''backend/seed\.py''',
+  '''backend/scripts/.*''',
+  # 测试代码里的 dev 占位（test_signing_service / test_hmac_verifier 等）
+  '''backend/tests/.*''',
+  # 文档里的样例（incident-playbook 提到 token 时是描述性，不是真值）
+  '''docs/.*\.md''',
+]
+
+regexes = [
+  # MVP 占位 JWT_SECRET
+  '''dev-secret-please-change-me''',
+  # 测试用占位 secret
+  '''test-secret(-32-bytes-base64-blob)?''',
+  # admin seed 默认密码（明文，但 .env.example 提示要换）
+  '''seed_admin_password\s*[:=]\s*["']?admin123''',
+]

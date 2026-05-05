@@ -29,6 +29,7 @@ from app.modules.content.services import (
     to_public,
 )
 from app.shared.media_provider.service import get_play_token_provider
+from app.shared.middleware.rate_limit import rate_limit
 
 router = APIRouter()
 
@@ -136,7 +137,11 @@ def home_aggregate(
     return HomeAggregateOut(sections=sections)
 
 
-@router.get("/search", response_model=VideoPublicList)
+@router.get(
+    "/search",
+    response_model=VideoPublicList,
+    dependencies=[Depends(rate_limit("videos_search", limit=60, per_seconds=60))],
+)
 def search_videos(
     q: str = Query(..., min_length=1, max_length=128),
     db: Session = Depends(get_db),
@@ -194,7 +199,11 @@ def get_video(
 PLAY_TOKEN_TTL_SEC = 300  # 5 分钟
 
 
-@router.get("/{video_id}/play-token", response_model=PlayTokenOut)
+@router.get(
+    "/{video_id}/play-token",
+    response_model=PlayTokenOut,
+    dependencies=[Depends(rate_limit("play_token", limit=30, per_seconds=60))],
+)
 def get_play_token(
     request: Request,
     video_id: int = Path(..., ge=1),

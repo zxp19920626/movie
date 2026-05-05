@@ -11,6 +11,13 @@
 #   - MySQL 走 RDS（不本地起），P0 阶段用户开通后切 DATABASE_URL=mysql+pymysql://...
 #   - 生产部署走另一份 infra/docker-compose.yml（P2.40 待写）
 
+# dev 也加 logging 上限，避免本地日志爆磁盘（与 prod 同构便于排查）
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "100m"
+    max-file: "3"
+
 services:
   backend:
     build:
@@ -37,6 +44,7 @@ services:
       timeout: 3s
       retries: 3
       start_period: 10s
+    logging: *default-logging
 
   redis:
     image: redis:7-alpine
@@ -50,6 +58,7 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+    logging: *default-logging
 
 volumes:
   backend_storage:

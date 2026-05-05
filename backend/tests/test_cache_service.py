@@ -54,3 +54,21 @@ def test_invalidate_pattern(cache: InMemoryCacheService) -> None:
 def test_make_key_命名规范() -> None:
     assert make_key("cp", "app_registry", "uuid-x") == "cp:app_registry:uuid-x"
     assert make_key("user", "profile", 42) == "user:profile:42"
+
+
+def test_incr_首次创建返回1(cache: InMemoryCacheService) -> None:
+    assert cache.incr("k1", ttl_seconds=10) == 1
+
+
+def test_incr_累加(cache: InMemoryCacheService) -> None:
+    assert cache.incr("k1", ttl_seconds=10) == 1
+    assert cache.incr("k1", ttl_seconds=10) == 2
+    assert cache.incr("k1", ttl_seconds=10) == 3
+
+
+def test_incr_过期重置计数(cache: InMemoryCacheService) -> None:
+    cache.incr("k1", ttl_seconds=1)
+    cache.incr("k1", ttl_seconds=1)
+    time.sleep(1.1)
+    # 过期后 +1 → 1（不是 3）
+    assert cache.incr("k1", ttl_seconds=10) == 1

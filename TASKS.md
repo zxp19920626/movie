@@ -241,7 +241,7 @@
 
 ### 5B 防盗链
 - [ ] **5.4** UA / 包签名 header 校验中间件
-- [ ] **5.5** Redis 单 IP 视频并发限流
+- [✓] **5.5** rate_limit FastAPI Depends 工厂 + ICacheService.incr 抽象（Redis INCR+EXPIRE / 内存原子加 + TTL）；play-token 30/min、search 60/min；X-RateLimit-* 响应头
 - [ ] **5.6** Cloudflare 海外流量套源验证（实测 SEA + 中东 + 拉美 + 非洲 TTFB）
 
 ### 5C 观看历史
@@ -274,8 +274,8 @@
 
 - [ ] **6.1** Sentry 错误告警通道接 Telegram + 邮箱
 - [ ] **6.2** OSS / CDN / VOD / SMS 全部预付费 + 上限 + 告警 已配齐 verify
-- [ ] **6.3** GitHub Actions secrets 审计 + 历史 commit 扫描无明文密钥
-- [ ] **6.4** ECS docker logs 配 `max-size=100m max-file=3`
+- [✓] **6.3** .github/workflows/secrets-scan.yml（gitleaks 全 history）+ .gitleaks.toml（项目级豁免：dev 占位 secret / 文档示例 / 测试夹具）
+- [✓] **6.4** infra/docker-compose.{dev,prod}.yml 全部容器配 json-file driver max-size=100m max-file=3 + tag={{.Name}}
 - [ ] **6.5** Redis 容器关闭 AOF（确认数据可丢）
 - [ ] **6.6** RDS 自动备份 + 跨区快照 已开启 verify
 - [ ] **6.7** Cloudflare 5xx 告警规则

@@ -1,0 +1,81 @@
+# 生产编排（P2.40 骨架；P0 完成后填真镜像 tag + 真 env）。
+#
+# 用法：
+#   ssh ecs
+#   cd /opt/movie && docker compose -f docker-compose.prod.yml up -d
+#
+# 与 dev 的关键差异：
+#   - 镜像走阿里云 ACR（registry.ap-southeast-1.aliyuncs.com/<org>/movie-backend:<tag>），
+#     不本地 build；CI（P2.41）push 镜像，scripts/deploy.sh 拉新版
+#   - DATABASE_URL 走 RDS for MySQL（不 SQLite）
+#   - Redis 容器仍跑（小流量阶段），DAU > 1w 后切阿里云 Redis Tair
+#   - 全部容器配 logging driver max-size + max-file（防日志吃磁盘）
+#   - restart=always；docker stop 不会自启，oom 会重启
+#
+# secrets：通过 .env 文件 + chmod 600 提供；不进 git。运维 ssh 到 ECS 后从 1Password 拷过来。
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "100m"
+    max-file: "3"
+    # tag 含容器名，方便聚合
+    tag: "{{.Name}}/{{.ID}}"
+
+services:
+  backend:
+    # P2.41 CI deploy.yml 会 push 真 tag 进来
+    image: ${BACKEND_IMAGE:-registry.ap-southeast-1.aliyuncs.com/your-org/movie-backend:latest}
+    container_name: movie-backend
+    restart: always
+    ports:
+      - "127.0.0.1:8000:8000"   # 仅本机；Nginx 反代到 :443
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS}
+      # 真三方接入（P0 之后填）
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      TURNSTILE_SECRET: ${TURNSTILE_SECRET:-}
+      ALIYUN_VOD_AK_ID: ${ALIYUN_VOD_AK_ID:-}
+      ALIYUN_VOD_AK_SECRET: ${ALIYUN_VOD_AK_SECRET:-}
+    volumes:
+      # storage 目录可由 OSS 替代；保留 volume 兜底（dev 下载、临时签 APK 等）
+      - backend_storage:/app/storage
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    logging: *default-logging
+
+  redis:
+    image: redis:7-alpine
+    container_name: movie-redis
+    restart: always
+    # 生产关 AOF（缓存可丢；要持久化的数据已经入 RDS）— P6.5
+    command:
+      - redis-server
+      - --appendonly
+      - "no"
+      - --save
+      - ""
+      - --maxmemory
+      - "1gb"
+      - --maxmemory-policy
+      - "allkeys-lru"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    logging: *default-logging
+
+volumes:
+  backend_storage:

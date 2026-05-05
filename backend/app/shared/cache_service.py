@@ -21,6 +21,10 @@ class ICacheService(Protocol):
 
     def invalidate_pattern(self, pattern: str) -> int: ...
 
+    def incr(self, key: str, ttl_seconds: int | None = None) -> int:
+        """原子 +1；如果键不存在按 0 起，可同时 set EXPIRE。返回新值。"""
+        ...
+
 
 class InMemoryCacheService:
     """进程内 TTL 缓存。MVP 单进程跑足够；多进程/多机切到 Redis 实现同接口。
@@ -61,6 +65,20 @@ class InMemoryCacheService:
             for k in keys:
                 self._store.pop(k, None)
             return len(keys)
+
+    def incr(self, key: str, ttl_seconds: int | None = None) -> int:
+        with self._lock:
+            entry = self._store.get(key)
+            if entry is None or self._expired(entry[1]):
+                new_val = 1
+                exp = time.time() + ttl_seconds if ttl_seconds else None
+                self._store[key] = (new_val, exp)
+            else:
+                cur, exp = entry
+                new_val = int(cur) + 1
+                # 不重置 TTL（与 Redis INCR 行为一致：只第一次 set EXPIRE）
+                self._store[key] = (new_val, exp)
+            return new_val
 
 
 def make_key(module: str, resource: str, id_: Any) -> str:

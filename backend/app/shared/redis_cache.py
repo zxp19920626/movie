@@ -69,5 +69,13 @@ class RedisCacheService:
             if cursor == 0:
                 break
 
+    def incr(self, key: str, ttl_seconds: int | None = None) -> int:
+        """原子 INCR；首次写入时设 EXPIRE。后续 +1 不重置 TTL（限流窗口语义）。"""
+        full_key = self._k(key)
+        n = self._client.incr(full_key)
+        if n == 1 and ttl_seconds:
+            self._client.expire(full_key, ttl_seconds)
+        return int(n)
+
     def ping(self) -> bool:
         return bool(self._client.ping())
