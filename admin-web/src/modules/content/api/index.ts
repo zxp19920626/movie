@@ -37,6 +37,24 @@ export const categoryApi = {
   delete: (id: number) => api.del<void>(`${PREFIX}/categories/${id}`),
 }
 
+// ===== VOD 同步 =====
+export const vodApi = {
+  pullOne: (videoId: number) =>
+    api.post<{ video_id: number; file_id: string; new_status: string | null; note: string }>(
+      `${PREFIX}/vod/videos/${videoId}/pull-from-vod`,
+    ),
+  syncAll: () => api.post<{ queued: boolean; message: string }>(`${PREFIX}/vod/sync-all`),
+  reconcile: () =>
+    api.post<{
+      ran: boolean
+      reason?: string
+      local_count?: number
+      remote_count?: number
+      missing_remote?: string[]
+      extra_remote?: string[]
+    }>(`${PREFIX}/vod/reconcile`),
+}
+
 // ===== Videos =====
 export const videoApi = {
   list: (params: VideoListParams = {}) =>

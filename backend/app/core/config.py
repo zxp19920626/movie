@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     # 留空则用进程内 InMemoryCacheService；指 redis://... 切到 RedisCacheService
     redis_url: str = ""
 
+    # 阿里云 VOD webhook 共享 secret（HMAC 签名）；留空则只在 dev 模式接受未签名请求
+    vod_webhook_secret: str = ""
+
     # ===== JWT =====
     jwt_secret: str = "dev-secret-please-change-me"
     jwt_algorithm: str = "HS256"

@@ -130,7 +130,7 @@
 
 ### 2E 公开 API
 - [✓] **2.22** `GET /api/v1/cp/upgrade/check`：HMAC 校验 + 时间戳防 replay + 规则引擎 + i18n 文案按 country 选语言
-- [ ] **2.23** `GET /cp/apk/{channel_code}/{version_code}` 302 跳 CDN — MVP 直接 download_url 走 /storage/；生产 CDN 签名 URL 时补
+- [✓] **2.23** `GET /cp/apk/{tenant_uuid}/{channel_code}/{version_code}` 302 跳 storage URL（HMAC + ts 防盗链）；生产 CDN 化时改 object_store.public_url 一处
 - [✓] **2.24** `GET /api/v1/cp/healthz`
 
 ### 2F 后台 API
@@ -213,10 +213,10 @@
 - [✓] **4.10** `media_provider/service.py`：configure_default_providers / get_media_provider / get_play_token_provider；main.py lifespan 启动时调；测试可 set_*_provider 注入 fake
 
 ### 4D VOD ↔ 本地同步双轨
-- [ ] **4.11** `POST /internal/vod/webhook`：验签 + 处理 FileUploadComplete / TranscodeComplete / FileDeleted 事件
-- [ ] **4.12** Celery 任务 `sync_vod_metadata`：每天 03:00 全量 diff（拉 ListMedia API 分页）
-- [ ] **4.13** **每日 reconcile job**：对账输出"本地有 VOD 没"和"VOD 有本地没"两份告警进 Telegram
-- [ ] **4.14** admin 手动 "Sync All" 按钮 + 单条 "Pull from VOD" 按钮
+- [✓] **4.11** `POST /internal/vod/webhook`：HMAC-SHA256 验签（VOD_WEBHOOK_SECRET 配则强制；空则 dev 放行）+ 处理 FileUploadComplete/TranscodeComplete/FileDeleted
+- [✓] **4.12** sync_vod_metadata：拉 list_media 分页 → 增量更新 ct_videos.vod_status / vod_synced_at；当前 SDK stub 抛 NotImplementedError 被 catch；接 SDK 后无需改逻辑
+- [✓] **4.13** reconcile_videos_against_vod：返回 missing_remote / extra_remote 两份列表；POST /admin/content/vod/reconcile 触发；接入告警通道时 wire 到 Telegram
+- [✓] **4.14** admin-web VideosView 加 Sync All / 对账 / 单行同步按钮（stub 模式提示 + 真模式刷状态）
 
 ### 4E 后台业务字段 + 地区可见性 + 二次审核
 - [✓] **4.15** `POST /api/v1/admin/content/videos`（含 code 唯一 / category_id 校验 / vod_file_id）

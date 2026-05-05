@@ -1,11 +1,13 @@
 """App 端公开路由：/api/v1/cp/..."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from fastapi.responses import RedirectResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.modules.channel_pack.adapters.object_store import get_default_store
-from app.modules.channel_pack.models import CpAppVersion
+from app.modules.channel_pack.models import CpApkSigningJob, CpAppVersion
 from app.modules.channel_pack.schemas import UpgradeCheckResponse
 from app.modules.channel_pack.services.app_registry import get_app_by_uuid
 from app.modules.channel_pack.services.hmac_verifier import (
@@ -98,6 +100,55 @@ def upgrade_check(
         sha256=signed.output_sha256,
         size=signed.output_size,
     )
+
+
+@router.get("/apk/{tenant_uuid}/{channel_code}/{version_code}", status_code=302)
+def apk_redirect(
+    request: Request,
+    tenant_uuid: str = Path(..., min_length=8),
+    channel_code: str = Path(..., min_length=1, max_length=64),
+    version_code: int = Path(..., gt=0),
+    ts: int = Query(..., description="unix seconds"),
+    sig: str = Query(..., description="HMAC-SHA256 base64"),
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    """便利端点：302 跳到该渠道签好的 APK 真实下载地址（dev 走 /storage；
+    生产换 OSS+CDN 时改 object_store.public_url 一处即可）。
+
+    URL 包含 HMAC 防盗链 + ts 防 replay；与 /upgrade/check 同密钥。
+    """
+    if not verify_timestamp(ts):
+        raise HTTPException(401, "ts expired")
+    app = get_app_by_uuid(db, tenant_uuid)
+    if app is None:
+        raise HTTPException(401, "app not found")
+
+    # 用与 /upgrade/check 相同的 canonical 算法验签（参数排序）
+    params = {
+        "tenant_uuid": tenant_uuid,
+        "channel_code": channel_code,
+        "version_code": str(version_code),
+        "ts": str(ts),
+    }
+    # 也允许 query 里有更多参数（防御未来增项）
+    for k, v in request.query_params.items():
+        params.setdefault(k, v)
+    if not verify_signature(app.hmac_secret, params, sig):
+        raise HTTPException(401, "signature mismatch")
+
+    job = db.scalars(
+        select(CpApkSigningJob).where(
+            CpApkSigningJob.app_id == app.id,
+            CpApkSigningJob.version_code == version_code,
+            CpApkSigningJob.channel_code == channel_code,
+            CpApkSigningJob.status == "success",
+        )
+    ).one_or_none()
+    if job is None:
+        raise HTTPException(404, "signed apk not found")
+
+    url = get_default_store().public_url(job.output_oss_key)
+    return RedirectResponse(url=url, status_code=302)
 
 
 # 静默引用，避免 unused

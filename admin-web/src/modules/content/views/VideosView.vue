@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { categoryApi, videoApi } from '../api'
+import { categoryApi, videoApi, vodApi } from '../api'
 import type {
   CtCategory,
   CtVideo,
@@ -333,6 +333,50 @@ function pageChange(p: number) {
   refresh()
 }
 
+// === VOD 同步 ===
+async function pullFromVod(row: CtVideo) {
+  if (!row.vod_file_id) return ElMessage.warning('该影片未挂 vod_file_id')
+  try {
+    const r = await vodApi.pullOne(row.id)
+    if (r.note?.startsWith('stub')) {
+      ElMessage.warning(`stub 模式（VOD SDK 未接入）：${r.note}`)
+    } else {
+      ElMessage.success(`已刷新 vod_status = ${r.new_status}`)
+      await refresh()
+    }
+  } catch (e) {
+    ElMessage.error((e as Error).message)
+  }
+}
+
+async function syncAll() {
+  try {
+    const r = await vodApi.syncAll()
+    ElMessage.success(r.message)
+  } catch (e) {
+    ElMessage.error((e as Error).message)
+  }
+}
+
+async function reconcile() {
+  try {
+    const r = await vodApi.reconcile()
+    if (!r.ran) {
+      ElMessage.warning(`对账未跑：${r.reason || 'unknown'}`)
+      return
+    }
+    const ml = r.missing_remote?.length || 0
+    const er = r.extra_remote?.length || 0
+    ElMessageBox.alert(
+      `本地 ${r.local_count} 条 / 远程 ${r.remote_count} 条\n本地有 VOD 没（${ml}）：\n${(r.missing_remote || []).slice(0, 10).join('\n')}\n\nVOD 有本地没（${er}）：\n${(r.extra_remote || []).slice(0, 10).join('\n')}`,
+      '对账结果',
+      { confirmButtonText: '关闭' },
+    )
+  } catch (e) {
+    ElMessage.error((e as Error).message)
+  }
+}
+
 const fmtTime = (s: string | null) => (s ? new Date(s).toLocaleString('zh-CN') : '—')
 
 onMounted(async () => {
@@ -348,7 +392,11 @@ onMounted(async () => {
         编辑业务字段 / 多语言文案 / 地区可见性 / 二审流转（来自 ct_videos + ct_region_visibility）
       </p>
     </div>
-    <el-button type="primary" @click="openCreate">新建影片</el-button>
+    <div>
+      <el-button @click="syncAll">Sync All（VOD）</el-button>
+      <el-button @click="reconcile">对账</el-button>
+      <el-button type="primary" @click="openCreate">新建影片</el-button>
+    </div>
   </div>
 
   <div class="mv-card" style="padding: 16px; margin-bottom: 12px">
@@ -417,10 +465,11 @@ onMounted(async () => {
       <el-table-column label="更新时间" width="160">
         <template #default="{ row }">{{ fmtTime(row.updated_at) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="320" fixed="right">
+      <el-table-column label="操作" width="380" fixed="right">
         <template #default="{ row }">
           <el-button size="small" @click="openEdit(row)">编辑</el-button>
           <el-button size="small" @click="openRegionDialog(row)">地区</el-button>
+          <el-button size="small" @click="pullFromVod(row)" :disabled="!row.vod_file_id">同步</el-button>
           <el-dropdown @command="(cmd: 'submit' | 'approve' | 'reject') => openReview(row, cmd)" trigger="click">
             <el-button size="small" type="success">二审</el-button>
             <template #dropdown>

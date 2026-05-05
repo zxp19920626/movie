@@ -2,8 +2,8 @@
 
 > 自动生成，不要手改。改路由后跑 `cd backend && uv run python scripts/export_api_docs.py` 重新生成。
 
-端点总数：**71**  
-分组数：**14**  
+端点总数：**76**  
+分组数：**16**  
 文档版本：v0.2.0
 
 - 在线交互文档：本地起服后访问 `http://127.0.0.1:8000/docs`
@@ -73,6 +73,14 @@ _后台 — 用户管理（admin token 鉴权）_
 | `POST` | `/api/v1/admin/content/videos/{video_id}/region-visibility` | Set Region Visibility | `set_region_visibility_api_v1_admin_content_videos__video_id__region_visibility_post` |
 | `POST` | `/api/v1/admin/content/videos/{video_id}/secondary-review` | Secondary Review | `secondary_review_api_v1_admin_content_videos__video_id__secondary_review_post` |
 
+## content-admin-vod
+
+| 方法 | 路径 | 说明 | operationId |
+| --- | --- | --- | --- |
+| `POST` | `/api/v1/admin/content/vod/reconcile` | Admin Reconcile | `admin_reconcile_api_v1_admin_content_vod_reconcile_post` |
+| `POST` | `/api/v1/admin/content/vod/sync-all` | Admin Sync All | `admin_sync_all_api_v1_admin_content_vod_sync_all_post` |
+| `POST` | `/api/v1/admin/content/vod/videos/{video_id}/pull-from-vod` | Admin Pull From Vod | `admin_pull_from_vod_api_v1_admin_content_vod_videos__video_id__pull_from_vod_post` |
+
 ## content-public
 
 | 方法 | 路径 | 说明 | operationId |
@@ -117,6 +125,7 @@ _渠道包平台公开端（HMAC 鉴权，App 调）_
 
 | 方法 | 路径 | 说明 | operationId |
 | --- | --- | --- | --- |
+| `GET` | `/api/v1/cp/apk/{tenant_uuid}/{channel_code}/{version_code}` | Apk Redirect | `apk_redirect_api_v1_cp_apk__tenant_uuid___channel_code___version_code__get` |
 | `GET` | `/api/v1/cp/healthz` | Healthz | `healthz_api_v1_cp_healthz_get` |
 | `GET` | `/api/v1/cp/upgrade/check` | Upgrade Check | `upgrade_check_api_v1_cp_upgrade_check_get` |
 
@@ -156,6 +165,12 @@ _C 端设备注册_
 | --- | --- | --- | --- |
 | `GET` | `/api/v1/users/me` | Me | `me_api_v1_users_me_get` |
 | `POST` | `/api/v1/users/me/delete-request` | Request Delete | `request_delete_api_v1_users_me_delete_request_post` |
+
+## vod-internal
+
+| 方法 | 路径 | 说明 | operationId |
+| --- | --- | --- | --- |
+| `POST` | `/api/v1/internal/vod/webhook` | Vod Webhook | `vod_webhook_api_v1_internal_vod_webhook_post` |
 
 ## watch-history
 
