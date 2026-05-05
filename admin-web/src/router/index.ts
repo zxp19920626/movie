@@ -66,7 +66,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'users',
         name: 'users',
-        component: () => import('@/modules/user/views/Placeholder.vue'),
+        component: () => import('@/modules/user/views/UsersView.vue'),
         meta: { title: '用户管理', permission: 'user.view' },
       },
       {

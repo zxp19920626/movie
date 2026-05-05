@@ -17,7 +17,7 @@
 - [ ] **P0 账户与域名**（19 条）
 - [~] **P1 仓库 + 骨架 + 抽象层 day 1**（30 条；admin-web 由 nextstream/admin 搬迁）— **MVP 子集已完成 11/30**：1.6/1.7/1.8/1.9/1.10/1.22/1.23/1.24/1.25/1.26/1.28
 - [~] **P2 App 分发平台先 ship 上线**（44 条）⭐ 最大阶段 — **MVP 子集已完成 30/44**：5 个表 + HMAC + 规则引擎 + 全套 admin/cp API + 5 个 admin 页面 + 端到端验证；Celery/Redis/alembic/STS/CDN/单测 留待生产化
-- [~] **P3 user 模块 + 第二次部署 + RBAC 6 模块**（20 条）— **admin 子集已完成 6/20**：3.3/3.4/3.12/3.13/3.14a/3.14b/3.14d（Login + JWT + RBAC 模型 + 4 seed 角色）
+- [~] **P3 user 模块 + 第二次部署 + RBAC 6 模块**（20 条）— **MVP 子集已完成 16/20**：admin (3.3/3.4/3.12/3.13/3.14/3.14a/3.14b/3.14d) + user (3.1/3.5/3.6/3.7/3.8/3.9/3.10/3.11) + admin/users CRUD（POST/GET/PATCH /admin/users）+ admin-web UsersView（列表/详情/禁用） — alembic / 真 Google/Turnstile/SMS / Redis 黑名单 留待生产化
 - [ ] **P4 content 模块 + VOD 同步 + 地区可见性 + 二次审核**（20 条）
 - [ ] **P5 App 端播放 + 首页聚合 + 搜索 + 第三次部署**（14 条）
 - [ ] **P5+ 埋点 / 分析事件 / 后台仪表盘**（6 条）
@@ -162,24 +162,24 @@
 ## P3 user 模块 + 第二次部署
 
 ### 3A 数据模型
-- [ ] **3.1** SQLAlchemy 模型：u_users, u_user_oauth, u_devices, u_otp_codes, u_refresh_tokens
-- [ ] **3.2** alembic migration（user 子目录）
+- [✓] **3.1** SQLAlchemy 模型：u_users（含 app_id FK + country/preferred_language）, u_user_oauth, u_devices, u_otp_codes, u_refresh_tokens
+- [ ] **3.2** alembic migration — MVP 用 create_all；schema 演化时补
 
 ### 3B 认证
-- [✓] **3.3** `app/core/security.py`：JWT access 15m + refresh 30d + scope=admin（user scope 与 refresh 旋转黑名单待 P3.5+ 补）
-- [✓] **3.4** Depends：JWT 校验 + admin scope 校验（Redis 黑名单待补）
-- [ ] **3.5** `POST /api/v1/auth/email/login` + 注册
-- [ ] **3.6** `POST /api/v1/auth/google`（google-auth 验签 id_token）
-- [ ] **3.7** Cloudflare Turnstile 服务端校验工具
-- [ ] **3.8** `POST /api/v1/auth/phone/send-otp`：Turnstile + 三层频控（号 60s / IP 5 次 5min / 设备 10 次/天）+ 国家号段白名单
-- [ ] **3.9** `POST /api/v1/auth/phone/verify`
-- [ ] **3.10** `POST /api/v1/auth/refresh`（旋转 + 黑名单）
-- [ ] **3.11** `POST /api/v1/devices/register`（含渠道 + 设备指纹）
+- [✓] **3.3** `app/core/security.py`：JWT access 15m + refresh 30d + scope=admin/user/admin_refresh/user_refresh + jti
+- [✓] **3.4** Depends：JWT 校验 + scope 校验（admin / user / user_refresh）；refresh 黑名单 MVP 进程内（生产换 Redis）
+- [✓] **3.5** `POST /api/v1/auth/email/register` + `/email/login`（密码 bcrypt + 强度校验）
+- [✓] **3.6** `POST /api/v1/auth/google`（mock：GOOGLE_CLIENT_ID 未设接受任何 id_token；生产 google-auth 验签）
+- [✓] **3.7** Cloudflare Turnstile 服务端校验工具（mock：TURNSTILE_SECRET 未设 dev mode 接受所有 token）
+- [✓] **3.8** `POST /api/v1/auth/phone/send-otp`：Turnstile + 三层频控（号 60s / IP 5min/5 次 / 设备 10 次/天）+ 国家号段白名单（C1+C3 区域）+ mock SMS 进 log
+- [✓] **3.9** `POST /api/v1/auth/phone/verify`：6 位码 bcrypt 校验 + 5 次错作废
+- [✓] **3.10** `POST /api/v1/auth/refresh`：旋转 access+refresh + 旧 refresh 入黑名单（DB + 进程内）
+- [✓] **3.11** `POST /api/v1/devices/register`：设备指纹 + 渠道 + last_seen_at（同 user+device+app 唯一）
 
 ### 3C admin 鉴权 + RBAC（增强版：6 模块 × view/edit 权限点 + 4 seed 角色）
 - [✓] **3.12** a_admin_users + a_admin_roles 模型（含 app_scope 多租户字段）；a_operation_logs 待补
 - [✓] **3.13** `POST /api/v1/admin/auth/login` + `GET /admin/auth/me`（IP 白名单 / 改密二次校验留待生产前补）
-- [ ] **3.14** admin RBAC 中间件（按 app_scope 限制每个 admin 看哪些 cp_apps 数据）— 数据模型已就位，业务层按需消费
+- [✓] **3.14** admin RBAC 中间件（按 app_scope 限制 cp_apps 数据；user 资源走 admin scope；细粒度授权 MVP 走 super_admin 短路 + scope 校验）
 - [✓] **3.14a** RBAC 权限树定义：6 大模块（dashboard / cp / content / user / membership / permissions），扁平化字符串权限存于 a_admin_roles.permissions
 - [✓] **3.14b** 4 个 seed 角色：Super_Admin（is_super_admin=true 短路所有检查）/ Content_Manager / Global_Ops / Service_Auditor（只读）
 - [✓] **3.14d** 前端路由 / 组件级 v-if 权限校验（router beforeEach + auth.hasPermission 已落地）

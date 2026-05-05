@@ -12,6 +12,7 @@ from app.core.database import Base, engine
 # 让 ORM 类被注册到 Base.metadata（MVP 用 create_all；P1.30 之后切 alembic）
 import app.modules.admin.models  # noqa: F401
 import app.modules.channel_pack.models  # noqa: F401
+import app.modules.user.models  # noqa: F401
 from app.modules.channel_pack.adapters.object_store import init_default_store
 from app.modules.channel_pack.adapters.walle import init_default_signer
 
@@ -29,7 +30,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="movie backend",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
