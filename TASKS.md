@@ -68,12 +68,12 @@
 - [ ] **1.11** `backend/Dockerfile`（多阶段，非 root UID 1000，distroless 或 python-slim）
 
 ### 1C 抽象层 day 1（L4'）
-- [ ] **1.12** `backend/app/shared/repository_base.py`：Repository 模式基类
-- [ ] **1.13** `backend/app/shared/cache_service.py`：Redis key 命名规范 `<module>:<resource>:<id>` + invalidate_pattern
-- [ ] **1.14** `backend/app/core/clock.py`：tz-aware now() 接口（IClock，方便测试）
-- [ ] **1.15** `backend/app/core/ids.py`：snowflake/uuid7 ID 生成
-- [ ] **1.16** `backend/app/shared/media_provider/protocol.py`：IMediaProvider, IPlayTokenProvider 接口（占位，实现 P4 写）
-- [ ] **1.17** `backend/app/core/security_protocol.py`：IAuthGuard 接口（user 模块实现）
+- [✓] **1.12** `backend/app/shared/repository_base.py`：Repository 模式基类
+- [✓] **1.13** `backend/app/shared/cache_service.py`：Redis key 命名规范 `<module>:<resource>:<id>` + invalidate_pattern
+- [✓] **1.14** `backend/app/core/clock.py`：tz-aware now() 接口（IClock，方便测试）
+- [✓] **1.15** `backend/app/core/ids.py`：snowflake/uuid7 ID 生成
+- [✓] **1.16** `backend/app/shared/media_provider/protocol.py`：IMediaProvider, IPlayTokenProvider 接口（占位，实现 P4 写）
+- [✓] **1.17** `backend/app/core/security_protocol.py`：IAuthGuard 接口（user 模块实现）
 - [ ] **1.18** `backend/app/shared/middleware/trace_id.py`：FastAPI 中间件读/生成 X-Request-Id，contextvar 透传到 logger/Sentry
 - [ ] **1.19** structlog JSON 输出 + 标准字段（ts, level, logger, trace_id, module, event）
 
