@@ -60,5 +60,8 @@ logs/
 .cache/
 tmp/
 
-# Claude Code 本地状态（不进 git）
-.claude/
+# Claude Code 本地状态（运行时缓存不进 git）
+.claude/*
+# 但项目级 Agent/Command 配置必须进 git（团队共享、交接保留）
+!.claude/agents/
+!.claude/commands/
