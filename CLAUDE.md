@@ -4,6 +4,28 @@
 > 产品需求事实层 → [`docs/产品文档.md`](docs/产品文档.md)
 > 技术决策与红线 → [`docs/架构与红线.md`](docs/架构与红线.md)
 > 任务跟踪 → [`docs/任务/`](docs/任务/) 下 4 个角色文件
+> 流水线状态 → [`.claude/runs/`](.claude/runs/README.md)
+> 不可自动化边界 → [`docs/不可自动化清单.md`](docs/不可自动化清单.md)
+
+---
+
+## 0. 会话启动检查（先于一切其它逻辑）
+
+每次新会话开始，**响应用户第一条消息前**先检查未完成 run：
+
+```bash
+test -f .claude/runs/active.json && cat .claude/runs/active.json
+```
+
+| active.json 状态 | 处理 |
+|---|---|
+| 不存在 | 正常处理用户消息 |
+| `status: running` | 提示用户：「检测到上次未完成的 run `<run-id>` (进度 N/M，最近事件 <T>)，要 `/继续` 还是 `/状态` 看详情？」**等用户决定**再处理本条消息 |
+| `status: stopped` | 提示用户：「上次主动停在 `<run-id>` (进度 N/M)，要 `/继续` 还是开新需求？」**等用户决定** |
+| `status: completed` | 不提示，正常处理 |
+| `status: aborted` | 提示用户：「上次异常中止 `<run-id>`，要 `/状态` 看进度还是 `/丢弃 <run-id>` 清理？」**等用户决定** |
+
+**仅例外**：用户消息是 `/状态` / `/继续` / `/停止` / `/丢弃` 时，直接执行对应 slash command 不需要先提示。
 
 ---
 
@@ -53,46 +75,122 @@
 
 ---
 
-## 3. 多 Agent 编排（Ralph 方案 — 全自动循环）
+## 3. 多 Agent 编排（Ralph 方案 — 里程碑分层 + 全自动循环 + 跨会话恢复）
 
 ```
 主对话（coordinator，就是我）
+  ↓
+[Step 0] 创建 run 目录 .claude/runs/<run-id>/
+         写 active.json（status=running）
   ↓
 [Step 1] 红线预检 → 触线 → 调 redblue → 停下等用户拍板（必停口子①）
   ↓ 不触线
 [Step 2] 改 docs/产品文档.md 对应章节
   ↓
-[Step 3] planner subagent → 拆任务到 4 角色文件 + 验收标准 + 专属测试规格
+[Step 3] meta-planner subagent → 切里程碑 ≤ 10 个
+         写 manifest.json + milestones.md
   ↓
-[Step 4] 自动 for-loop 跑每条任务：
-  ┌─────────────────────────────────────────┐
-  │  for task in tasks:                     │
-  │    developer subagent → 实施 + 写专测   │
-  │      ↓                                  │
-  │    tester subagent → 跑测试 → PASS/FAIL │
-  │      ├ PASS → 任务文件 [✓] + commit     │
-  │      ├ FAIL 1 轮 → SendMessage 回 dev   │
-  │      ├ FAIL 2 轮 → SendMessage 回 dev   │
-  │      ├ FAIL 3 轮 → 标 [~] 进终报告      │
-  │      │            **不停**继续下一条    │
-  │      └ 进入下一条任务（不问用户）       │
-  └─────────────────────────────────────────┘
+[Step 4] 里程碑层 for-loop（按拓扑序）：
+  ┌──────────────────────────────────────────────────────────┐
+  │ for milestone in milestones:                             │
+  │   if milestone.blocks_to_user:                           │
+  │     输出阻塞清单 → 暂停（status=stopped）                │
+  │     等用户完成 + /继续                                   │
+  │     continue（recheck）                                  │
+  │                                                          │
+  │   planner subagent → 拆该里程碑任务 ≤ 30 条              │
+  │   写 tasks_queue.jsonl                                   │
+  │                                                          │
+  │   for task in 该里程碑任务（按 deps 拓扑序）:            │
+  │     if task.deps 有 [~] / cascade_skip:                  │
+  │       cascade_skip 该 task（Q4=A）                       │
+  │       写 tasks_skipped.jsonl reason=cascade_skip_from_X  │
+  │       continue                                           │
+  │                                                          │
+  │     attempt = 1                                          │
+  │     while attempt <= 3:                                  │
+  │       发 developer subagent (name=dev-<ID>)              │
+  │       发 tester subagent                                 │
+  │       PASS → tasks_done.jsonl + commit + break           │
+  │       FAIL → SendMessage 回 dev-<ID>; attempt++          │
+  │     if attempt > 3:                                      │
+  │       tasks_skipped.jsonl reason=failed_3_attempts       │
+  │       预跳过该 task 的所有下游（cascade）                │
+  │   ↓                                                      │
+  │   milestones.md 标 [✓]                                   │
+  │   git push origin main（Q5=A 不开 PR）                   │
+  │   timeline.log: MILESTONE_DONE + MILESTONE_PUSH          │
+  └──────────────────────────────────────────────────────────┘
   ↓
-[Step 5] 全部任务跑完 → 终报告：
-  - PASS 列表（X / Y 条）
-  - FAIL 列表（标 [~] 的 + 根因猜测）
-  - 修改文件汇总
-  - commit 记录列表
-  - 下次该做的事（如有）
+[Step 5] active.json status=completed
+         终报告（PASS / FAIL / cascade / commits / 改动文件 / 下一步）
 ```
 
-**核心约定（与之前不同，全部覆盖）**：
-- ✅ planner 拆完后**直接进 for-loop**，不列清单等用户确认（Q2=B）
-- ✅ 每条 PASS 立即 commit（Q3=A）
-- ✅ FAIL 3 轮还失败时**标 `[~]` 跳过**，继续下一条（Q1=A），不打断流水线
-- ✅ 全部跑完才回主对话汇报
+**核心约定**：
+- ✅ 状态全部写盘（`.claude/runs/<run-id>/`），关窗口能恢复
+- ✅ 里程碑分层（meta-planner → planner）解决大需求 context 爆炸
+- ✅ 里程碑边界自动 push（Q2=A 修正：上次说"每条 PASS 都 push"是错的，实际是每个里程碑结束 push 一次）
+- ✅ FAIL 3 轮 + 上游 [~] 时**自动 cascade skip 下游**（Q4=A），跑到底再让用户处理
+- ✅ 不可自动化里程碑（blocks_to_user=true）→ 暂停 + 阻塞清单 + 等用户 /继续
+- ✅ 全部里程碑跑完才回主对话汇报终报告
 - ❌ 不再"单任务即停"
 - ❌ 不再"等用户拍板下一条"
+
+### 3.1 状态写盘时机表
+
+| 事件 | 写哪个文件 |
+|---|---|
+| run 启动 | active.json + manifest.json + milestones.md |
+| meta-planner 完成 | manifest.json.milestones |
+| 里程碑开始 | active.json.milestone_idx + timeline.log |
+| planner 完成单里程碑拆解 | tasks_queue.jsonl 追加 |
+| task 开始 | tasks_running.json + timeline.log |
+| task PASS | tasks_done.jsonl 追加 + tasks_running.json 清空 + git commit + active.json 更新 |
+| task FAIL N 轮 | tasks_running.json.attempt 自增 + timeline.log |
+| task FAIL 3 轮 | tasks_skipped.jsonl 追加 + timeline.log |
+| cascade skip | tasks_skipped.jsonl 追加 reason=cascade_skip_from_X |
+| 里程碑结束 | milestones.md + manifest.json.milestones[i].status + git push + timeline.log |
+| 用户 /停止 | active.json.status=stopped + stopped.flag + timeline.log |
+| run 完成 | active.json.status=completed + 终报告 + timeline.log |
+
+### 3.2 cascade skip 算法（Q4=A）
+
+```python
+def cascade_skip(failed_task_id):
+    # BFS 找所有下游
+    queue = [failed_task_id]
+    while queue:
+        upstream = queue.pop(0)
+        downstream = [t for t in tasks_queue if upstream in t.deps and t.status == "pending"]
+        for t in downstream:
+            t.status = "predicted_skip"
+            tasks_skipped.append({
+                "id": t.id,
+                "reason": f"cascade_skip_from_{failed_task_id}",
+                "blocked_downstream": [...]  # 该 task 的下游也会被这个流程标记
+            })
+            queue.append(t.id)
+```
+
+### 3.3 不可自动化里程碑处理
+
+manifest.json.milestones[i].blocks_to_user=true 时，主 Agent 跑到该里程碑：
+
+1. 在 active.json 写 status=stopped + blocked_reason="user_action_required"
+2. timeline.log 写 BLOCKED_USER_INPUT M<X>
+3. 输出阻塞清单（可执行的 checklist）：
+   ```
+   ## 流水线暂停 — 等待你完成 M0「账户与域名」
+
+   - [ ] 0.1 在 Cloudflare Registrar 买域名
+   - [ ] 0.2 注册阿里云国际版账号
+   ...
+
+   完成后任意窗口敲 `/继续` 接着跑。
+   ```
+4. **退出 for-loop**，等用户 /继续
+
+用户做完后 `/继续` 时，主 Agent 会重新检查该里程碑的 blocks_to_user 任务（按 docs 里那条任务的"完成验证方法"判断；如果验证不了就**询问一次**「M0.1 域名买好了吗？(y/n)」），然后继续往下跑。
 
 ---
 
@@ -161,25 +259,37 @@ cd backend && uv run python seed.py
 
 ## 7. 必停口子（自动流水线唯一例外，不停就失控）
 
-自动流水线**只在以下 4 种情况停下问用户**：
+自动流水线**只在以下 5 种情况停下问用户**：
 
 | ID | 情况 | 处理 |
 |---|---|---|
-| ① | planner 触红线 / 不做清单 | 调 `redblue` → 把合稿给用户拍板 |
-| ② | planner 拆解失败（需求模糊 / 0 条任务 / 互相冲突） | 返回主对话，列出歧义点让用户补 |
-| ③ | developer 中途发现任务规格歧义 | 中断 → 主对话回去问用户 → 改产品文档 → 重启流水线 |
-| ④ | （**不停**）同一任务 FAIL 3 轮没修好 | 标 `[~]` + 根因猜测进终报告，**继续下一条** |
+| ① | planner / meta-planner 触红线 / 不做清单 | 调 `redblue` → 把合稿给用户拍板 |
+| ② | planner / meta-planner 拆解失败（需求模糊 / 0 条 / 冲突） | 列歧义点让用户补 |
+| ③ | developer 中途发现任务规格歧义 | 中断 → 改产品文档 → /继续 |
+| ④ | 跑到 `blocks_to_user=true` 里程碑（账户实名 / 法务 / 应用商店审核 / 商务 / 物理） | 输出阻塞清单 + status=stopped → 等用户做完 + /继续 |
+| ⑤ | （**不停**）同一任务 FAIL 3 轮 | 标 `[~]` + cascade skip 下游 + 进终报告，**继续下一里程碑** |
 
-例外 ④ 是关键设计：3 轮死循环时**不停下问**，把失败累积到终报告，符合"我只看终验"诉求。
+例外 ⑤ 是关键设计：3 轮死循环时**不停下问**，把失败累积到终报告，符合"我只看终验"诉求。
+
+例外 ④ 是大需求关键设计：账户实名 / 应用商店审核 / 真实流量调优等是 Claude 永远做不了的事（详见 [`docs/不可自动化清单.md`](docs/不可自动化清单.md)）。
 
 ## 8. 不准做清单（流程层面）
 
 - ❌ 用户提新需求时**直接写代码**不先改产品文档
 - ❌ planner 拆完任务**列清单等用户确认**（Q2=B：直接进 for-loop）
 - ❌ 任意一条 PASS 后**停下问"下一条做不做"**（Q1=A：自动循环）
+- ❌ 每条 PASS 后 push 远程（Q5=A 修正：里程碑结束才 push）
 - ❌ developer 写代码**不写专属测试用例**（Q3 强约束，tester 检查没测试直接 FAIL）
 - ❌ tester FAIL 时**自作主张破例放行**
 - ❌ 触红线时**不开红蓝对抗**直接破例
-- ❌ FAIL 3 轮**停下问用户**（应该标 `[~]` 继续下一条）
+- ❌ FAIL 3 轮**停下问用户**（应该标 `[~]` + cascade skip 下游继续）
 - ❌ 任务跳过时**静默删除**（必须 `[-]` + `← 原因：...` 或 `[~]` + 终报告说明）
+- ❌ 跑到 `blocks_to_user=true` 里程碑时**强行尝试自动化**（直接停下 + 阻塞清单）
+- ❌ 不写 `.claude/runs/<run-id>/` 状态（关窗口就丢失进度）
 - ❌ 改 docs/api.md（自动生成的，改路由后跑脚本刷新）
+
+---
+
+## 9. 不可自动化边界（一句话）
+
+完整清单见 [`docs/不可自动化清单.md`](docs/不可自动化清单.md)。涉及**账户实名 / 法务 / 商务 / 运营 / 物理**的任务，主 Agent 必须停下输出阻塞清单等用户操作。**永远不要假装自己能代办**这些事。

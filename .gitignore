@@ -62,6 +62,8 @@ tmp/
 
 # Claude Code 本地状态（运行时缓存不进 git）
 .claude/*
-# 但项目级 Agent/Command 配置必须进 git（团队共享、交接保留）
+# 但项目级 Agent/Command 配置 + 流水线状态必须进 git（跨会话恢复 / 团队共享 / 交接保留）
 !.claude/agents/
 !.claude/commands/
+!.claude/runs/
+.claude/runs/*/stopped.flag

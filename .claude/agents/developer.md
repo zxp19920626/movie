@@ -19,6 +19,9 @@ tools: Read, Edit, Write, Bash, Grep, Glob
 4. **专属测试用例规格**（必须实现的测试文件 + 用例列表）
 5. 红线提示（如有）
 6. 预估改动文件列表
+7. `run-id`（用于在汇报里 reference 状态目录）
+
+**注意**：你**不写 `.claude/runs/<run-id>/` 状态文件**（主 Agent 写）。你也**不 commit**（主 Agent 在 PASS 后 commit）。你只负责实施 + 自测。
 
 ---
 

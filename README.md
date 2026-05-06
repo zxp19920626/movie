@@ -39,34 +39,56 @@ FastAPI · MySQL（阿里云国际 RDS）· Redis · Vue3 · 阿里云国际版 
 
 仓库已内置 [`CLAUDE.md`](CLAUDE.md) 自动加载，Claude Code 启动时直接读到协作约束。无需手动粘贴提示词。
 
-直接说要做什么：
-- **提新需求** → `/新需求 <一句话描述>`（强制走完整流水线）
-- **实施已有任务** → 「做 P3.7」「实施后端任务里的 X」
-- **问代码 / 调试** → 直接问
+新会话启动时主 Agent 会先检查 `.claude/runs/active.json` — 如有未完成的流水线会先提示你 `/继续` 还是开新需求。
 
-## 多 Agent 工作流（Ralph 方案 — 全自动）
+直接说要做什么：
+
+| 命令 / 自然语言 | 行为 |
+|---|---|
+| `/新需求 <一句话描述>` | 起新流水线，全自动跑到底 |
+| `/继续` | 接续上次中断的流水线 |
+| `/状态` | 查看当前 run 进度（只读） |
+| `/停止` | 优雅停止当前 run（关窗口前用） |
+| 「做 P3.7」「把后端剩下的任务都做了」 | 已有任务，自动 for-loop |
+| 「X 是怎么实现的 / 这段代码为什么报错」 | 答疑，不走流程 |
+
+## 多 Agent 工作流（Ralph 方案 — 全自动 + 里程碑分层 + 跨会话恢复）
 
 ```
 主对话（coordinator）
-  ↓ 红线预检（触线 → redblue agent → 等你拍板）
+  ↓ 起 run（.claude/runs/<run-id>/）
+  ↓ 红线预检（触线 → redblue → 停下等你拍板）
   ↓ 改产品文档
   ↓
-planner agent → 拆任务到 4 角色文件 + 验收标准 + 专属测试规格
+meta-planner agent → 切里程碑 ≤ 10 个
   ↓
-[for-loop 自动跑每条任务，不打断]
-  developer agent → 实施 + 强制新增专属测试用例
+[里程碑层 for-loop]
+  for milestone:
+    阻塞用户的里程碑 → 输出 checklist → 停下等你 /继续
+    planner agent → 拆任务 ≤ 30 条
+    [任务层 for-loop]
+      developer agent → 实施 + 强制新增专属测试用例
+      tester agent → pytest + import-linter + admin-web build → PASS/FAIL
+      PASS → [✓] + commit → 下一条
+      FAIL 1/2 → SendMessage 回 dev 修
+      FAIL 3 → 标 [~] + cascade skip 下游 → 不停继续
+    里程碑结束 → push origin main（每里程碑 push 一次）
   ↓
-  tester agent → pytest + import-linter + admin-web build → PASS/FAIL
-  ↓
-  PASS → [✓] + commit → 自动取下一条
-  FAIL → SendMessage 回 dev 修（最多 3 轮）→ 3 轮 FAIL 标 [~] 进终报告，不停继续
-  ↓
-全部任务跑完 → 终报告（你只看这个）
+全部里程碑完成 → 终报告（你只看这个）
 ```
 
 **全自动诺言**：你只在 `/新需求` 这一刻说一次需求，之后流水线自动跑到底。
-唯一会中途停下问你的 4 种情况：触红线 / planner 拆失败 / dev 发现规格歧义 / 触不做清单。
-（FAIL 3 轮**不停**，累积到终报告里一次性看。）
+所有进度写盘到 `.claude/runs/<run-id>/`（进 git，跨电脑可恢复）。
+关窗口 / 几天后回来 → 任意新窗口 `/继续` 接着跑。
+
+**5 个必停口子**：
+1. 触红线 → 调 redblue 等你拍板
+2. planner / meta-planner 拆解失败 → 等你补需求
+3. dev 发现规格歧义 → 等你改产品文档
+4. 跑到阻塞用户里程碑（账户实名 / 法务 / 商务） → 输出 checklist 等你做完
+5. FAIL 3 轮（**不停**） → 标 `[~]` + cascade skip 进终报告
+
+**不可自动化的事**：账户实名 / 法务 / 商务 / 运营 / 物理操作 5 大类，详见 [`docs/不可自动化清单.md`](docs/不可自动化清单.md)。
 
 Subagent 定义：[`.claude/agents/`](.claude/agents/)
 Slash command：[`.claude/commands/新需求.md`](.claude/commands/新需求.md)
@@ -78,7 +100,9 @@ Slash command：[`.claude/commands/新需求.md`](.claude/commands/新需求.md)
 | [CLAUDE.md](CLAUDE.md) | Claude Code 协作硬约束（自动加载） |
 | [docs/产品文档.md](docs/产品文档.md) | PRD（新需求先改这里） |
 | [docs/架构与红线.md](docs/架构与红线.md) | 技术栈 / 模块边界 / 红线 / 不做清单 |
+| [docs/不可自动化清单.md](docs/不可自动化清单.md) | Claude 永远做不了的 5 类事（账户/法务/商务/运营/物理） |
 | [docs/任务/](docs/任务/) | 4 个角色任务文件 |
 | [docs/api.md](docs/api.md) | OpenAPI 自动导出 |
 | [docs/channel-module-design.md](docs/channel-module-design.md) | App 分发平台模块深设计 |
 | [docs/incident-playbook.md](docs/incident-playbook.md) | 故障应急手册 |
+| [.claude/runs/README.md](.claude/runs/README.md) | 跨会话流水线状态规范 |
