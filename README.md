@@ -44,21 +44,29 @@ FastAPI · MySQL（阿里云国际 RDS）· Redis · Vue3 · 阿里云国际版 
 - **实施已有任务** → 「做 P3.7」「实施后端任务里的 X」
 - **问代码 / 调试** → 直接问
 
-## 多 Agent 工作流（Ralph 方案）
+## 多 Agent 工作流（Ralph 方案 — 全自动）
 
 ```
 主对话（coordinator）
+  ↓ 红线预检（触线 → redblue agent → 等你拍板）
+  ↓ 改产品文档
   ↓
 planner agent → 拆任务到 4 角色文件 + 验收标准 + 专属测试规格
-  ↓ （红线检查 → 触线自动调 redblue agent）
-你确认本次做哪条
   ↓
-developer agent → 实施 + 强制新增专属测试用例
+[for-loop 自动跑每条任务，不打断]
+  developer agent → 实施 + 强制新增专属测试用例
   ↓
-tester agent → pytest + import-linter + admin-web build → PASS/FAIL
+  tester agent → pytest + import-linter + admin-web build → PASS/FAIL
   ↓
-PASS → [✓] + commit + 等你下一条；FAIL → 回 developer 修（最多 3 轮）
+  PASS → [✓] + commit → 自动取下一条
+  FAIL → SendMessage 回 dev 修（最多 3 轮）→ 3 轮 FAIL 标 [~] 进终报告，不停继续
+  ↓
+全部任务跑完 → 终报告（你只看这个）
 ```
+
+**全自动诺言**：你只在 `/新需求` 这一刻说一次需求，之后流水线自动跑到底。
+唯一会中途停下问你的 4 种情况：触红线 / planner 拆失败 / dev 发现规格歧义 / 触不做清单。
+（FAIL 3 轮**不停**，累积到终报告里一次性看。）
 
 Subagent 定义：[`.claude/agents/`](.claude/agents/)
 Slash command：[`.claude/commands/新需求.md`](.claude/commands/新需求.md)
