@@ -48,6 +48,7 @@ from app.modules.channel_pack.schemas import (
     ChannelList,
     ChannelOut,
     ChannelUpdate,
+    PopupButton,
     RuleCreate,
     RuleList,
     RuleOut,
@@ -62,6 +63,10 @@ from app.modules.channel_pack.schemas import (
 from app.modules.channel_pack.services.app_registry import invalidate
 from app.modules.channel_pack.services.signing_service import fan_out_signing_jobs
 from app.modules.channel_pack.services.upgrade_engine import check_upgrade
+from app.modules.channel_pack.services.upgrade_rule_validator import (
+    UpgradeRuleValidationError,
+    validate_buttons_for_app,
+)
 from app.modules.channel_pack.tasks.sign_apk import run_sign_apk_job
 
 router = APIRouter()
@@ -371,6 +376,27 @@ def list_rules(app: CpApp = Depends(get_target_app), db: Session = Depends(get_d
     return RuleList(items=[RuleOut.model_validate(r) for r in items], total=len(items))
 
 
+def _effective_play_channel_for_rule(
+    db: Session, app: CpApp, channel_codes: list[str]
+) -> CpChannel | None:
+    """规则触达 Play Store 渠道时返回该渠道；用于按钮 inapp_apk 校验（C2 红线）。
+
+    - channel_codes 非空 → 规则仅对这些渠道生效，按 deps 的 rule 级校验已经拒了 Play，这里返 None
+    - channel_codes 为空（apply-to-all） → 若 app 有任何 enabled Play 渠道则需触发 Play 限制
+    """
+    if channel_codes:
+        return None
+    return db.scalar(
+        select(CpChannel)
+        .where(
+            CpChannel.app_id == app.id,
+            CpChannel.is_play_store.is_(True),
+            CpChannel.enabled.is_(True),
+        )
+        .limit(1)
+    )
+
+
 @router.post("/apps/{app_id}/rules", response_model=RuleOut, status_code=201)
 def create_rule(
     payload: RuleCreate,
@@ -395,6 +421,13 @@ def create_rule(
         )
         if play_codes:
             raise HTTPException(400, f"channel_codes 不能包含 Play Store 渠道：{play_codes}")
+
+    effective_play_channel = _effective_play_channel_for_rule(db, app, payload.channel_codes)
+    try:
+        validate_buttons_for_app(app, effective_play_channel, payload.popup_buttons)
+    except UpgradeRuleValidationError as e:
+        raise HTTPException(422, str(e)) from e
+
     rule = CpUpgradeRule(app_id=app.id, created_by=admin.id, **payload.model_dump())
     db.add(rule)
     db.commit()
@@ -412,7 +445,29 @@ def update_rule(
     rule = db.get(CpUpgradeRule, rule_id)
     if rule is None or rule.app_id != app.id:
         raise HTTPException(404, "rule not found")
-    for k, v in payload.model_dump(exclude_unset=True).items():
+
+    updates = payload.model_dump(exclude_unset=True)
+
+    # 组装最终态用于校验（payload 没传的字段用 rule 现值）
+    final_channel_codes = (
+        updates["channel_codes"] if "channel_codes" in updates else (rule.channel_codes or [])
+    )
+    if "popup_buttons" in updates:
+        final_buttons_raw = updates["popup_buttons"] or []
+    else:
+        final_buttons_raw = rule.popup_buttons or []
+    final_buttons = [
+        b if isinstance(b, PopupButton) else PopupButton.model_validate(b)
+        for b in final_buttons_raw
+    ]
+
+    effective_play_channel = _effective_play_channel_for_rule(db, app, final_channel_codes)
+    try:
+        validate_buttons_for_app(app, effective_play_channel, final_buttons)
+    except UpgradeRuleValidationError as e:
+        raise HTTPException(422, str(e)) from e
+
+    for k, v in updates.items():
         setattr(rule, k, v)
     db.commit()
     return RuleOut.model_validate(rule)
