@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { cpApi } from '../api'
 import { useCpStore } from '../stores/cp'
+import PopupButtonEditor from '../components/PopupButtonEditor.vue'
 import {
   POPUP_STRATEGY_LABELS,
   TARGET_COUNTRIES,
@@ -12,6 +13,13 @@ import {
   type RuleCreatePayload,
   type RulePreviewResponse,
 } from '../types'
+import {
+  I18N_FALLBACK_LOCALE,
+  addLocale,
+  availableLocales,
+  collectActiveLocales,
+  removeLocale,
+} from '../composables/useI18nLocales'
 
 const cpStore = useCpStore()
 const loading = ref(false)
@@ -45,14 +53,72 @@ const newRule = (): RuleCreatePayload => ({
   popup_content_i18n: { en: '' },
   confirm_text_i18n: { en: 'Update' },
   cancel_text_i18n: { en: 'Later' },
+  popup_buttons: [],
   priority: 10,
   effective_from: null,
   effective_to: null,
 })
 
 const form = reactive<RuleCreatePayload>(newRule())
+const popupEditorRef = ref<{ validationErrors: string[] } | null>(null)
 
 const appId = computed(() => cpStore.currentAppId)
+
+const isPlayStoreHit = computed(() => {
+  if (form.channel_codes.length === 0) {
+    // apply-to-all：只要 channels 中存在 play store 即可能命中
+    return channels.value.some((c) => c.is_play_store)
+  }
+  return channels.value
+    .filter((c) => form.channel_codes.includes(c.code))
+    .some((c) => c.is_play_store)
+})
+
+const activeLocales = computed(() =>
+  collectActiveLocales([
+    form.popup_title_i18n,
+    form.popup_content_i18n,
+    form.confirm_text_i18n,
+    form.cancel_text_i18n,
+  ]),
+)
+
+const addLocaleDialog = reactive({
+  visible: false,
+  selected: '' as string,
+  candidates: [] as { code: string; label: string }[],
+})
+
+function openAddLocaleDialog() {
+  // 候选基于 4 个 i18n record 的并集
+  const merged: Record<string, string> = {
+    ...form.popup_title_i18n,
+    ...form.popup_content_i18n,
+    ...form.confirm_text_i18n,
+    ...form.cancel_text_i18n,
+  }
+  addLocaleDialog.candidates = availableLocales(merged)
+  addLocaleDialog.selected = addLocaleDialog.candidates[0]?.code || ''
+  addLocaleDialog.visible = true
+}
+
+function confirmAddLocale() {
+  const code = addLocaleDialog.selected
+  if (!code) return
+  form.popup_title_i18n = addLocale(form.popup_title_i18n, code)
+  form.popup_content_i18n = addLocale(form.popup_content_i18n, code)
+  form.confirm_text_i18n = addLocale(form.confirm_text_i18n, code)
+  form.cancel_text_i18n = addLocale(form.cancel_text_i18n, code)
+  addLocaleDialog.visible = false
+}
+
+function removeRuleLocale(code: string) {
+  if (code === I18N_FALLBACK_LOCALE) return
+  form.popup_title_i18n = removeLocale(form.popup_title_i18n, code)
+  form.popup_content_i18n = removeLocale(form.popup_content_i18n, code)
+  form.confirm_text_i18n = removeLocale(form.confirm_text_i18n, code)
+  form.cancel_text_i18n = removeLocale(form.cancel_text_i18n, code)
+}
 
 async function refresh() {
   if (!appId.value) return
@@ -91,6 +157,10 @@ async function submit() {
   if (!form.target_version_code) return ElMessage.warning('请选目标版本')
   if (form.version_code_min > form.version_code_max) return ElMessage.warning('版本范围非法')
   if (form.device_id_hash_mod_min > form.device_id_hash_mod_max) return ElMessage.warning('灰度区间非法')
+  const editorErrors = popupEditorRef.value?.validationErrors ?? []
+  if (editorErrors.length > 0) {
+    return ElMessage.error(`PopupButton 配置有误：${editorErrors[0]}（共 ${editorErrors.length} 条）`)
+  }
   submitting.value = true
   try {
     if (editing.value) {
@@ -208,6 +278,13 @@ onMounted(() => {
           {{ POPUP_STRATEGY_LABELS[row.popup_strategy as keyof typeof POPUP_STRATEGY_LABELS] }}
         </template>
       </el-table-column>
+      <el-table-column label="按钮数" width="80" class-name="popup-buttons-count-col">
+        <template #default="{ row }">
+          <el-tag size="small" :type="row.popup_buttons?.length ? 'primary' : 'info'">
+            {{ row.popup_buttons?.length ?? 0 }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="优先级" prop="priority" width="80" />
       <el-table-column label="操作" width="140">
         <template #default="{ row }">
@@ -317,26 +394,69 @@ onMounted(() => {
         </el-col>
       </el-row>
 
-      <el-form-item label="弹窗多语言文案（en 必填，其它按目标国家可选）">
+      <el-form-item label="弹窗多语言文案（en 必填；可 + 添加语言 / × 删除）">
+        <div style="margin-bottom: 8px; display: flex; gap: 8px; flex-wrap: wrap">
+          <el-tag
+            v-for="code in activeLocales"
+            :key="code"
+            :closable="code !== 'en'"
+            :data-test="`rule-locale-${code}`"
+            @close="removeRuleLocale(code)"
+          >
+            {{ code }}
+          </el-tag>
+          <el-button size="small" data-test="rule-add-locale" @click="openAddLocaleDialog">+ 添加语言</el-button>
+        </div>
         <el-tabs>
           <el-tab-pane label="标题">
-            <el-input v-for="(_, code) in form.popup_title_i18n" :key="code" v-model="form.popup_title_i18n[code]" :placeholder="`[${code}] 标题`" style="margin-bottom: 4px" />
+            <el-input v-for="code in activeLocales" :key="code" v-model="form.popup_title_i18n[code]" :placeholder="`[${code}] 标题`" style="margin-bottom: 4px" />
           </el-tab-pane>
           <el-tab-pane label="内容">
-            <el-input v-for="(_, code) in form.popup_content_i18n" :key="code" v-model="form.popup_content_i18n[code]" type="textarea" :rows="2" :placeholder="`[${code}] 内容`" style="margin-bottom: 4px" />
+            <el-input v-for="code in activeLocales" :key="code" v-model="form.popup_content_i18n[code]" type="textarea" :rows="2" :placeholder="`[${code}] 内容`" style="margin-bottom: 4px" />
           </el-tab-pane>
           <el-tab-pane label="确定按钮">
-            <el-input v-for="(_, code) in form.confirm_text_i18n" :key="code" v-model="form.confirm_text_i18n[code]" :placeholder="`[${code}] 确定`" style="margin-bottom: 4px" />
+            <el-input v-for="code in activeLocales" :key="code" v-model="form.confirm_text_i18n[code]" :placeholder="`[${code}] 确定`" style="margin-bottom: 4px" />
           </el-tab-pane>
           <el-tab-pane label="取消按钮">
-            <el-input v-for="(_, code) in form.cancel_text_i18n" :key="code" v-model="form.cancel_text_i18n[code]" :placeholder="`[${code}] 取消`" style="margin-bottom: 4px" />
+            <el-input v-for="code in activeLocales" :key="code" v-model="form.cancel_text_i18n[code]" :placeholder="`[${code}] 取消`" style="margin-bottom: 4px" />
           </el-tab-pane>
         </el-tabs>
+      </el-form-item>
+
+      <el-divider content-position="left">PopupButton（最多 5 个；不配则用上面 confirm/cancel 兜底）</el-divider>
+      <el-form-item>
+        <PopupButtonEditor
+          ref="popupEditorRef"
+          v-model="form.popup_buttons"
+          :allowed-hosts="cpStore.currentApp?.allowed_upgrade_hosts ?? []"
+          :is-play-store="isPlayStoreHit"
+          :locales="activeLocales"
+        />
       </el-form-item>
     </el-form>
     <template #footer>
       <el-button @click="dialogVisible = false">取消</el-button>
       <el-button type="primary" :loading="submitting" @click="submit">提交</el-button>
+    </template>
+  </el-dialog>
+
+  <!-- 添加语言对话框 -->
+  <el-dialog v-model="addLocaleDialog.visible" title="+ 添加语言" width="360px">
+    <el-form label-position="top">
+      <el-form-item label="选择 locale">
+        <el-select v-model="addLocaleDialog.selected" placeholder="locale" style="width: 100%">
+          <el-option
+            v-for="l in addLocaleDialog.candidates"
+            :key="l.code"
+            :label="`${l.code} — ${l.label}`"
+            :value="l.code"
+          />
+        </el-select>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="addLocaleDialog.visible = false">取消</el-button>
+      <el-button type="primary" :disabled="!addLocaleDialog.selected" @click="confirmAddLocale">添加</el-button>
     </template>
   </el-dialog>
 

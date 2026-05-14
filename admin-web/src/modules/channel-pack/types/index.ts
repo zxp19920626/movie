@@ -154,6 +154,7 @@ export interface RuleCreatePayload {
   popup_content_i18n: Record<string, string>
   confirm_text_i18n: Record<string, string>
   cancel_text_i18n: Record<string, string>
+  popup_buttons: PopupButton[]
   priority: number
   effective_from: string | null
   effective_to: string | null
@@ -208,10 +209,13 @@ export const TARGET_COUNTRIES: { code: string; label: string }[] = [
 
 export const I18N_LOCALES: { code: string; label: string }[] = [
   { code: 'en', label: 'English' },
+  { code: 'zh', label: '简体中文' },
   { code: 'id', label: 'Bahasa' },
   { code: 'vi', label: 'Tiếng Việt' },
   { code: 'th', label: 'ไทย' },
-  { code: 'ar', label: 'العربية' },
   { code: 'pt', label: 'Português' },
   { code: 'es', label: 'Español' },
+  { code: 'ar', label: 'العربية' },
+  { code: 'fr', label: 'Français' },
+  { code: 'ja', label: '日本語' },
 ]
