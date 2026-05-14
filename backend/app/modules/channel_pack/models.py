@@ -35,6 +35,9 @@ class CpApp(Base):
     api_key_hash: Mapped[str] = mapped_column(String(255))  # bcrypt(api_key) for service-to-service
     hmac_secret: Mapped[str] = mapped_column(String(128))  # base64 32 bytes — App SDK 用
     status: Mapped[str] = mapped_column(String(16), default="active")
+    allowed_upgrade_hosts: Mapped[list] = mapped_column(
+        JSON, default=list, server_default="[]", nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -118,6 +121,9 @@ class CpUpgradeRule(Base):
     popup_content_i18n: Mapped[dict] = mapped_column(JSON, default=dict)
     confirm_text_i18n: Mapped[dict] = mapped_column(JSON, default=dict)
     cancel_text_i18n: Mapped[dict] = mapped_column(JSON, default=dict)
+    popup_buttons: Mapped[list] = mapped_column(
+        JSON, default=list, server_default="[]", nullable=False
+    )
 
     priority: Mapped[int] = mapped_column(Integer, default=10, index=True)
     effective_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
