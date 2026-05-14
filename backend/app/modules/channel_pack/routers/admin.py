@@ -4,6 +4,7 @@ import base64
 import secrets
 import uuid
 from datetime import UTC, datetime
+from urllib.parse import urlparse
 
 from fastapi import (
     APIRouter,
@@ -140,12 +141,49 @@ def update_app(
     app: CpApp = Depends(get_target_app),
     db: Session = Depends(get_db),
 ) -> AppOut:
+    update_fields = payload.model_dump(exclude_unset=True)
     if payload.name is not None:
         app.name = payload.name
     if payload.package_name is not None:
         app.package_name = payload.package_name
     if payload.status is not None:
         app.status = payload.status
+    if "allowed_upgrade_hosts" in update_fields:
+        new_hosts = set(update_fields["allowed_upgrade_hosts"] or [])
+        old_hosts = set(app.allowed_upgrade_hosts or [])
+        removed = old_hosts - new_hosts
+        if removed:
+            rules = list(
+                db.scalars(
+                    select(CpUpgradeRule).where(CpUpgradeRule.app_id == app.id)
+                ).all()
+            )
+            affected: list[dict] = []
+            for rule in rules:
+                hit_host: str | None = None
+                for b in rule.popup_buttons or []:
+                    url_i18n = b.get("url_i18n") or {}
+                    for _locale, url in url_i18n.items():
+                        host = (urlparse(url).hostname or "").lower()
+                        if host in removed:
+                            hit_host = host
+                            break
+                    if hit_host:
+                        break
+                if hit_host:
+                    affected.append(
+                        {"rule_id": rule.id, "rule_name": rule.name, "host": hit_host}
+                    )
+            if affected:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "message": "白名单缩短前请清理引用规则",
+                        "removed_hosts": sorted(removed),
+                        "affected_rules": affected,
+                    },
+                )
+        app.allowed_upgrade_hosts = update_fields["allowed_upgrade_hosts"] or []
     db.commit()
     invalidate(app.tenant_uuid)
     return AppOut.model_validate(app)
