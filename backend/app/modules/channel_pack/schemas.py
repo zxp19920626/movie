@@ -85,6 +85,23 @@ class PopupButton(BaseModel):
         return self
 
 
+class PopupButtonResolved(BaseModel):
+    """resolve_popup_buttons 输出格式：客户端直接消费的扁平结构。"""
+
+    id: str = Field(max_length=32)
+    type: Literal["browser", "playstore", "inapp_apk", "deeplink", "none"]
+    text: str = Field(min_length=1, max_length=200)
+    url: str | None = Field(default=None, max_length=500)
+    style: Literal["primary", "secondary", "danger"] | None = None
+    target: dict[str, str] | None = None
+
+    @model_validator(mode="after")
+    def _validate_url_required_for_non_none_type(self) -> "PopupButtonResolved":
+        if self.type != "none" and not self.url:
+            raise ValueError("url is required when type is not 'none'")
+        return self
+
+
 # ============== App (租户) ==============
 
 
@@ -328,6 +345,7 @@ class UpgradeCheckResponse(BaseModel):
     download_url: str | None = None
     sha256: str | None = None
     size: int | None = None
+    popup_buttons: list[PopupButtonResolved] = Field(default_factory=list)
 
 
 # ============== List wrapper ==============
