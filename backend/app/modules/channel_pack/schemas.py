@@ -1,9 +1,10 @@
 """channel_pack Pydantic schemas"""
 
+import re
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 POPUP_STRATEGIES = Literal[
     "once_per_launch",
@@ -13,6 +14,51 @@ POPUP_STRATEGIES = Literal[
     "once_per_release",
     "custom_interval",
 ]
+
+# ISO 639-1（小写）+ 可选 -XX（大写国家后缀），如 "en" / "zh" / "en-US"
+_I18N_KEY_RE = re.compile(r"^[a-z]{2}(-[A-Z]{2})?$")
+
+
+def _validate_i18n_keys(d: dict[str, str], value_max_len: int) -> dict[str, str]:
+    for k, v in d.items():
+        if not _I18N_KEY_RE.match(k):
+            raise ValueError(
+                f"invalid i18n key {k!r}: must match ISO 639-1 (e.g. 'en', 'zh', 'en-US')"
+            )
+        if not isinstance(v, str) or len(v) < 1 or len(v) > value_max_len:
+            raise ValueError(
+                f"invalid i18n value for key {k!r}: length must be 1..{value_max_len}"
+            )
+    return d
+
+
+class PopupButton(BaseModel):
+    """升级弹窗 CTA 按钮（PRD 4.2.5.1）"""
+
+    id: str = Field(max_length=32)
+    type: Literal["browser", "playstore", "inapp_apk", "deeplink", "none"]
+    text_i18n: dict[str, str] = Field(min_length=1)
+    url_i18n: dict[str, str] | None = None
+    style: Literal["primary", "secondary", "danger"] | None = None
+    target: dict[str, str] | None = None
+
+    @field_validator("text_i18n")
+    @classmethod
+    def _validate_text_i18n(cls, v: dict[str, str]) -> dict[str, str]:
+        return _validate_i18n_keys(v, value_max_len=200)
+
+    @field_validator("url_i18n")
+    @classmethod
+    def _validate_url_i18n(cls, v: dict[str, str] | None) -> dict[str, str] | None:
+        if v is None:
+            return v
+        return _validate_i18n_keys(v, value_max_len=500)
+
+    @model_validator(mode="after")
+    def _validate_url_required_for_non_none_type(self) -> "PopupButton":
+        if self.type != "none" and not self.url_i18n:
+            raise ValueError("url_i18n is required when type is not 'none'")
+        return self
 
 
 # ============== App (租户) ==============
@@ -132,6 +178,7 @@ class RuleCreate(BaseModel):
     popup_content_i18n: dict[str, str] = Field(default_factory=dict)
     confirm_text_i18n: dict[str, str] = Field(default_factory=dict)
     cancel_text_i18n: dict[str, str] = Field(default_factory=dict)
+    popup_buttons: list[PopupButton] = Field(default_factory=list, max_length=5)
     priority: int = 10
     effective_from: datetime | None = None
     effective_to: datetime | None = None
@@ -155,6 +202,7 @@ class RuleUpdate(BaseModel):
     popup_content_i18n: dict[str, str] | None = None
     confirm_text_i18n: dict[str, str] | None = None
     cancel_text_i18n: dict[str, str] | None = None
+    popup_buttons: list[PopupButton] | None = Field(default=None, max_length=5)
     priority: int | None = None
     effective_from: datetime | None = None
     effective_to: datetime | None = None
@@ -181,6 +229,7 @@ class RuleOut(BaseModel):
     popup_content_i18n: dict[str, str]
     confirm_text_i18n: dict[str, str]
     cancel_text_i18n: dict[str, str]
+    popup_buttons: list[PopupButton] = Field(default_factory=list)
     priority: int
     effective_from: datetime | None
     effective_to: datetime | None
