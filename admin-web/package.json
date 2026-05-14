@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext .ts,.vue"
+    "lint": "eslint . --ext .ts,.vue",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@types/node": "^25.6.0",
@@ -21,11 +24,15 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.4",
+    "@vitest/coverage-v8": "^1.6.1",
+    "@vue/test-utils": "^2.4.10",
     "@vue/tsconfig": "^0.5.1",
+    "jsdom": "^29.1.1",
     "typescript": "~5.6.3",
     "unplugin-auto-import": "^0.18.3",
     "unplugin-vue-components": "^0.27.4",
     "vite": "^5.4.10",
+    "vitest": "^1.6.1",
     "vue-tsc": "^2.1.10"
   }
 }
