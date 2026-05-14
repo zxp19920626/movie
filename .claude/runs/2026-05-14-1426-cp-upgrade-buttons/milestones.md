@@ -29,7 +29,7 @@ M1 (后端数据模型 + Service) ─┬─→ M2 (公开 API 出口) ─┐
 - [✓] **M1** 后端数据模型 + Service 入口硬约束 — 12/12 任务 PASS，commits=12，push=45810b2
 - [✓] **M2** 公开 API /upgrade/check response 输出 + 兼容性 — 6/6 任务 PASS，commits=3（批量 T2+T3 / T4+T5+T6），push=cc629e7
 - [✓] **M3** Admin UI 白名单管理 + 按钮编辑器 — 8/8 任务 PASS，commits=4，push=1efbc70
-- [ ] **M4** 文档对齐 + 联调验收 — 6 任务，依赖 M2 + M3
+- [✓] **M4** 文档对齐 + 联调验收 — 6/6 任务 PASS，commit=58ae29b（含 channel-module-design §6.1 + incident-playbook §7.5 + 测试用例映射表 + integration_check.md）
 
 ## 并行机会
 

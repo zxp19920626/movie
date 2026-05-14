@@ -1,0 +1,17 @@
+{
+  "run_id": "2026-05-14-1426-cp-upgrade-buttons",
+  "status": "completed",
+  "completed_at": "2026-05-14T09:16:00Z",
+  "redblue_decision": "GO_with_5_constraints",
+  "started_at": "2026-05-14T06:26:35Z",
+  "title": "cp 模块升级规则增强：popup_buttons 多按钮 + Play 渠道硬约束 + Admin UI 编辑器",
+  "user_input_summary": "cp_upgrade_rules 加 popup_buttons (text_i18n/url_i18n/type 枚举/target)，后端字段+迁移+API+Play渠道拒inapp_apk+单测，Admin UI RulesView 加按钮列表编辑器多语言tab。不做 Android。",
+  "milestone_idx": null,
+  "milestone_count": null,
+  "blocked_reason": null,
+  "scope": {
+    "backend": true,
+    "admin_web": true,
+    "android": false
+  }
+}
