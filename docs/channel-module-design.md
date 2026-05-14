@@ -326,6 +326,218 @@ def check_upgrade(app_id, version_code, channel, country, device_id):
 
 ---
 
+## 6.1 升级弹窗按钮（popup_buttons）
+
+> 给运营更灵活的弹窗按钮控制：可下发多语言文案、多类型跳转（外链 / 应用市场 / In-App 下载 APK / Deeplink），同时兜底 Play 合规与 URL 白名单。
+> 设计目标：**Play 渠道永不下发可绕过 Play 的安装路径**、**老客户端零回归**、**所有按钮 url 必须 https 且 host 在白名单**。
+
+### 6.1.1 数据模型
+
+`cp_upgrade_rules.popup_buttons` 新增 JSON 字段（nullable，默认 `null`）。
+
+**最大长度**：5（数组元素数 max=5，超过 422）。
+
+**单元素 schema**（Pydantic 严格，extra="forbid"）：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `id` | str | 是 | 同一规则内唯一；客户端用作埋点 key |
+| `type` | enum | 是 | `browser` / `playstore` / `inapp_apk` / `deeplink` / `none` |
+| `text_i18n` | dict[str, str] | 是 | locale → 文案；至少有 `en` |
+| `url_i18n` | dict[str, str] | type≠none | locale → URL；至少有 `en`（`type=none` 时必须省略或 `{}`） |
+| `style` | enum | 否 | `primary` / `secondary` / `text`；默认 `secondary` |
+| `target` | str | 否 | 客户端跳转参数（如 deeplink 路径），按 type 语义解释 |
+
+### 6.1.2 type 枚举（5 个，固定，禁止扩展）
+
+| type | 客户端行为 | 备注 |
+|---|---|---|
+| `browser` | 浏览器外打开 url | 适合落地页 / FAQ |
+| `playstore` | 拉起 Play Store 应用页 | url 必须是 `https://play.google.com/store/apps/details?id=...` 形式 |
+| `inapp_apk` | 在 App 内下载 APK 并触发安装 | **Play 渠道禁用**（红线 #2） |
+| `deeplink` | 解析 `target` 内部跳转 | url 仅作降级回退用，仍受白名单约束 |
+| `none` | 仅关闭弹窗、不跳转 | 用作"我知道了" / "稍后提醒"等纯关闭按钮；不带 url |
+
+⚠️ **不存在** `dismiss` / `cancel` / `confirm` 等老命名；本字段语义是「跳转动作」，关闭交互归 `none`。
+
+### 6.1.3 Play 渠道硬约束（防 Google 下架，三道闸）
+
+**第一道——保存规则时**：`RuleCreate` / `RuleUpdate` Service 入口校验：
+
+```python
+if rule.popup_buttons:
+    for btn in rule.popup_buttons:
+        if btn.type == "inapp_apk":
+            # 该 rule 的 channel_codes 含任一 is_play_store=true 渠道
+            # 或 channel_codes 为空（apply-to-all 也走 Play 兜底）
+            if rule_targets_play_channel(app_id, rule.channel_codes):
+                raise HTTPException(422, "inapp_apk not allowed on Play channel")
+```
+
+`channel_codes=[]`（apply-to-all）等价于"包含所有渠道（含 Play）"，因此**也必须**走兜底校验。
+
+**第二道——切渠道 `is_play_store=false→true` 时**：`rescan_existing_rules(channel_id)`：
+
+```python
+def toggle_play_store(channel_id, new_value):
+    if new_value is True:
+        violations = scan_rules_with_inapp_apk_targeting(channel_id)
+        if violations:
+            raise HTTPException(409, {
+                "error": "existing_rules_have_inapp_apk",
+                "violations": [{"rule_id": r.id, "name": r.name} for r in violations]
+            })
+    channel.is_play_store = new_value
+```
+
+**第三道——查询 /upgrade/check 时**：is_play_store=true 渠道直接返回 `{"has_update": false}`，不查规则、不渲染按钮（与 §7 第三道闸一致）。
+
+### 6.1.4 URL 白名单（cp_apps.allowed_upgrade_hosts）
+
+**字段**：`cp_apps.allowed_upgrade_hosts` JSON array of string。
+
+**Host 形态约束**（schema 强制）：
+- 纯 host：`apk.movie.app`、`play.google.com`
+- ❌ 不含 scheme（`https://...`）
+- ❌ 不含 path / query（`apk.movie.app/files`）
+- ❌ 不含 port（`apk.movie.app:443`）
+- ✅ 全小写（保存时小写化，比对时也小写）
+- ✅ 允许子域单独白名单（`cdn.movie.app` ≠ `movie.app`，**不做后缀匹配**）
+
+**校验时机**：
+- 保存规则（RuleCreate/Update）：对每个 button 的 `url_i18n` 各 locale，提取 host → 若不在 `allowed_upgrade_hosts` → 422
+- 缩短白名单（PATCH `/apps/{id}` 删 host）：若该 host 被任一现存规则的某 button.url 引用 → 409 + `affected_rules` 列表，阻塞保存
+
+```python
+def validate_button_url(url: str, allowed_hosts: list[str]):
+    if not url.startswith("https://"):
+        raise HTTPException(422, "url must be https")
+    host = urlparse(url).hostname.lower()
+    if host not in [h.lower() for h in allowed_hosts]:
+        raise HTTPException(422, f"host {host} not in allowed_upgrade_hosts")
+```
+
+### 6.1.5 https-only
+
+所有 `url_i18n` 的值必须以 `https://` 开头；`http://` / `ftp://` / `file://` / `javascript:` 一律 422。
+
+### 6.1.6 i18n fallback 算法
+
+服务端 `/upgrade/check` 在 resolve 时按以下顺序选 locale：
+
+```python
+def choose_locale(country: str | None, accept_language: str | None) -> list[str]:
+    """返回 locale 候选链，从最具体到最 fallback。"""
+    chain = []
+    # 1. Accept-Language 前几位（按 q 排序），如 vi-VN, en-US
+    if accept_language:
+        chain.extend(parse_accept_language(accept_language))  # ["vi-VN", "vi", "en-US", "en"]
+    # 2. country → 默认 locale（VN→vi, ID→id, TH→th, PH→en, ...）
+    if country:
+        chain.append(COUNTRY_DEFAULT_LOCALE.get(country.upper(), "en"))
+    # 3. 兜底 en
+    chain.append("en")
+    # 去重保序
+    return list(dict.fromkeys(chain))
+
+
+def pick_i18n(i18n_dict: dict[str, str] | None, locale_chain: list[str]) -> str | None:
+    if not i18n_dict:
+        return None
+    for loc in locale_chain:
+        if loc in i18n_dict:
+            return i18n_dict[loc]
+        # 退化：vi-VN → vi
+        base = loc.split("-")[0]
+        if base in i18n_dict:
+            return i18n_dict[base]
+    # 任意取一个（i18n_dict 至少有 en，前面会命中；这里是 paranoia）
+    return next(iter(i18n_dict.values()), None)
+```
+
+### 6.1.7 缺 url 整按钮丢弃（resolve_popup_buttons）
+
+服务端 `resolve_popup_buttons(buttons, locale_chain)`：
+
+```python
+def resolve_popup_buttons(buttons, locale_chain):
+    resolved = []
+    for btn in buttons or []:
+        text = pick_i18n(btn.text_i18n, locale_chain)
+        if not text:
+            continue  # 文案 fallback 也拿不到 → 丢弃整按钮
+        url = None
+        if btn.type != "none":
+            url = pick_i18n(btn.url_i18n, locale_chain)
+            if not url:
+                continue  # url fallback 拿不到 → 丢弃整按钮（避免下发空 url）
+        resolved.append({
+            "id": btn.id,
+            "type": btn.type,
+            "text": text,
+            "url": url,        # type=none 时为 None；其他 type 必定非空
+            "style": btn.style or "secondary",
+            "target": btn.target,
+        })
+    return resolved
+```
+
+⇒ **客户端拿到的 button.url 永远不会为 null，除非 type='none'**。
+
+### 6.1.8 兼容性矩阵（C5 关键，老客户端零回归）
+
+`/upgrade/check` response 在有更新时**同时下发**老 4 字段（`popup_title` / `popup_content` / `popup_confirm` / `popup_cancel`）+ 新 `popup_buttons`，由客户端按自己版本能力选用：
+
+| 服务端 `popup_buttons` 值 | 老客户端（不识别 popup_buttons） | 新客户端 |
+|---|---|---|
+| 字段不存在（response 中无 key） | 走老 4 字段 | 走老 4 字段（看作降级） |
+| `[]` 空数组 | 走老 4 字段 | 走老 4 字段 |
+| 非空数组 | **走老 4 字段**（字段不识别即忽略） | **优先用 popup_buttons**；老 4 字段冗余下发用于兜底 |
+
+实现约定：
+- 即便规则配了 `popup_buttons`，服务端**仍然**输出 `popup_title` / `popup_content` / `popup_confirm` / `popup_cancel`（取规则的传统字段或从 buttons 推导一个 best-effort 默认值）。
+- 老客户端读不到 `popup_buttons` key 时不会崩溃（JSON 多余字段忽略）。
+- 缓存 key 保持原 schema 不变；popup_buttons 是 response 的纯增量，缓存命中时直接复用整个 JSON。
+
+### 6.1.9 Response 示例
+
+```json
+{
+  "has_update": true,
+  "target_version_code": 102,
+  "target_version_name": "1.0.2",
+  "is_force": false,
+  "can_skip": true,
+  "popup_interval_hours": 24,
+  "popup_title": "新版本可用",
+  "popup_content": "修复若干问题",
+  "popup_confirm": "立即更新",
+  "popup_cancel": "稍后",
+  "popup_buttons": [
+    {
+      "id": "primary_update",
+      "type": "inapp_apk",
+      "text": "立即更新",
+      "url": "https://apk.movie.app/v102/direct.apk",
+      "style": "primary"
+    },
+    {
+      "id": "later",
+      "type": "none",
+      "text": "稍后再说",
+      "url": null,
+      "style": "text"
+    }
+  ],
+  "download_url": "https://apk.cdn/.../signed-url-token=...",
+  "sha256": "abc123...",
+  "size": 52428800,
+  "changelog": "Bug fixes and improvements"
+}
+```
+
+---
+
 ## 7. Play 渠道隔离（三道闸）
 
 ### 第一道：编译期 BuildConfig flavor（根本防线）

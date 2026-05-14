@@ -220,6 +220,57 @@ ssh ecs "docker tag movie-backend:vN-1 movie-backend:current && docker compose u
 
 ---
 
+## 7.5 升级规则编辑相关 422 / 409
+
+> 后台保存 cp_upgrade_rules 时容易踩的两类合规拦截，给值班同学的速查。
+
+### 7.5.1 按钮 url host 不在白名单 → 422
+
+**症状**：管理后台保存规则时返回
+```json
+{"detail": "host xxx not in allowed_upgrade_hosts"}
+```
+
+**根因**：popup_buttons 的某个 `url_i18n` 值的 host 不在 `cp_apps.allowed_upgrade_hosts`。
+
+**处理**：
+1. 管理员去 **App 详情页** → "白名单 hosts" 卡片 → 把缺失的 host 追加进 `allowed_upgrade_hosts`
+2. 注意 host 形态：纯 host、全小写、无 `https://` 前缀、无 path / port、不做后缀匹配（`cdn.movie.app` 必须显式加，加 `movie.app` 不够）
+3. 保存 App 后**重试保存规则**
+
+⚠️ 不能为了"放行"把白名单清空；前端 schema 校验 + 后端校验都会拒绝非 https 或非白名单 host，绕不过去。
+
+### 7.5.2 Play 渠道误配 inapp_apk → 422 / 409
+
+**症状 A（保存规则 422）**：
+```json
+{"detail": "inapp_apk not allowed on Play channel"}
+```
+含义：该规则的 `channel_codes` 命中了一个 `is_play_store=true` 的渠道（或 `channel_codes=[]` apply-to-all 也被兜底拦下）。
+
+**症状 B（切渠道 409）**：管理员把某 channel 的 `is_play_store` 从 false 改成 true，PATCH 返回
+```json
+{
+  "error": "existing_rules_have_inapp_apk",
+  "violations": [{"rule_id": 123, "name": "全量强升 v102"}]
+}
+```
+含义：rescan 存量规则发现仍有引用了该渠道的 inapp_apk 按钮。
+
+**处理（A）**：
+1. 改按钮 `type` 为 `playstore`（推荐：跳应用市场让 Play 拉新版）或 `browser`（落地页）或 `none`（仅"我知道了"）
+2. 或缩小 `channel_codes` 到不含 Play 渠道的范围
+
+**处理（B）**：
+1. 拿到 `violations` 列表的 rule_id
+2. 逐条进规则编辑页，把 inapp_apk 按钮改成 playstore / browser / none
+3. 或把规则的 `channel_codes` 收紧、不再包含该渠道
+4. 全部处理完再切 is_play_store
+
+⚠️ **不要**为了"先切过去再改规则"绕过 409；切过去之后，老客户端按缓存 response 仍会拿到 inapp_apk 引导，是红线 #2 实锤。
+
+---
+
 ## 8. 各场景"千万别做"清单
 
 - ❌ DROP TABLE / TRUNCATE，没 dry-run 先在 staging 跑

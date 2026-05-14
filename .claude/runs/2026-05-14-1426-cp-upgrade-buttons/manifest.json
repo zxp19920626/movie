@@ -1,0 +1,67 @@
+{
+  "run_id": "2026-05-14-1426-cp-upgrade-buttons",
+  "title": "cp 模块升级规则增强：popup_buttons 多按钮 + Play 渠道硬约束 + 域名白名单 + Admin UI 编辑器",
+  "args": "cp 模块升级规则增强 — popup_buttons 多按钮设计 + Play 渠道硬约束 + 域名白名单 + Admin UI 编辑器。本期不做 Android。",
+  "created_at": "2026-05-14T06:42:30Z",
+  "redblue_decision": "GO_with_5_constraints",
+  "hard_constraints": [
+    "C1: Service 入口校验 Play 渠道拒 inapp_apk（非 Pydantic 层）+ is_play_store 切换回溯扫存量规则",
+    "C2: cp_apps.allowed_upgrade_hosts 域名白名单（新扩 cp_apps 表 + Admin UI 管理）",
+    "C3: Pydantic 严格 schema（popup_buttons maxLength=5 / 字符串 maxLength=200 / ISO 639-1 key 正则）",
+    "C4: /upgrade/check 出口 i18n fallback helper + 缺 url 整按钮丢弃",
+    "C5: 老规则 popup_buttons=[] vs 字段不存在 的语义写进 docs/channel-module-design.md"
+  ],
+  "scope_excludes": [
+    "Android 客户端实现（A1/A2 仍未启动，本期跳过）"
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "name": "后端数据模型 + Service 入口硬约束",
+      "description": "alembic 迁移加 cp_upgrade_rules.popup_buttons 列 + cp_apps.allowed_upgrade_hosts 列；ORM 模型字段；Pydantic PopupButton/PopupButtonI18n 严格 schema（maxLength=5 / 字符串 maxLength=200 / ISO 639-1 key regex）；Service 入口校验：Play 渠道（is_play_store=true）拒 inapp_apk + URL host ∈ 白名单 + https-only；is_play_store 切换时回溯扫存量规则；i18n fallback helper（按 country/Accept-Language 选 → 缺 url 整按钮丢弃）；老规则空数组兼容；pytest 单测覆盖所有新分支（含 Play 拒入、白名单拒入、fallback 丢弃、is_play_store 切换扫规则）",
+      "priority": 1,
+      "task_count_estimated": 12,
+      "deps": [],
+      "covers_p_phase": "P2 扩展（2.4 + 2.10 + 2.22 增量）",
+      "covers_constraints": ["C1", "C2-后端部分", "C3", "C4"],
+      "blocks_to_user": false,
+      "status": "pending"
+    },
+    {
+      "id": "M2",
+      "name": "公开 API /upgrade/check response 输出 + 兼容性",
+      "description": "/api/v1/cp/upgrade/check response 追加 popup_buttons 数组：按 country 走 i18n fallback helper，过滤掉 url 缺失的按钮，空数组场景客户端回退老 confirm/cancel 模式；Pydantic response schema 更新；Redis 缓存 key 维度不变但 value 加新字段（兼容老缓存的 schema migration 策略）；pytest 端到端测覆盖：有按钮规则 + 空按钮老规则 + i18n fallback + 缺 url 丢弃 + Play 渠道未配 inapp_apk 时不漏出；API 文档脚本刷新 docs/api.md",
+      "priority": 2,
+      "task_count_estimated": 6,
+      "deps": ["M1"],
+      "covers_p_phase": "P2 扩展（2.22 增量）",
+      "covers_constraints": ["C4"],
+      "blocks_to_user": false,
+      "status": "pending"
+    },
+    {
+      "id": "M3",
+      "name": "Admin UI — 白名单管理 + 按钮编辑器",
+      "description": "admin-web 两块：(1) App 详情页加 allowed_upgrade_hosts 管理 UI（列表 + 增删 + https host 校验 + 保存调后端）；(2) RulesView.vue 按钮编辑器（按钮列表最多 5 个 + type 下拉 confirm/cancel/install/jump_browser/jump_market/jump_deeplink/dismiss + 每按钮多语言 tab 编辑 text_i18n/url_i18n + 实时校验：Play 渠道下选 inapp_apk 直接红字 + url host 不在白名单红字 + maxLength 提示）；前端表单 Yup/Zod schema 与后端 Pydantic 一致；pnpm build 通过；admin-web 单测/snapshot 覆盖新组件",
+      "priority": 3,
+      "task_count_estimated": 8,
+      "deps": ["M1"],
+      "covers_p_phase": "P3 扩展（2.37 增量 + 新增白名单页）",
+      "covers_constraints": ["C2-UI部分", "C1-UI提示"],
+      "blocks_to_user": false,
+      "status": "pending"
+    },
+    {
+      "id": "M4",
+      "name": "文档对齐 + 联调验收",
+      "description": "docs/channel-module-design.md 加 4.2.5.1 popup_buttons 章节（schema / 字段语义 / 类型枚举 / i18n fallback 算法 / 兼容性矩阵：popup_buttons=[] vs 字段不存在 vs 字段非空）+ Play 渠道硬约束说明 + 白名单工作流；docs/incident-playbook.md 加「按钮 url host 不在白名单导致 422」「Play 渠道误配 inapp_apk 拒入」应急条目；docs/任务/{后端,管理后台,测试}任务.md 同步标记本期新增/完成任务；联调脚本：本地起 backend + admin-web，跑出 3 条样例规则（无按钮 / 多语言多按钮 / Play 渠道纯外链）→ 端到端调 /upgrade/check 验证 response 正确；run-id 终报告",
+      "priority": 4,
+      "task_count_estimated": 6,
+      "deps": ["M2", "M3"],
+      "covers_p_phase": "文档维护铁律 + 联调",
+      "covers_constraints": ["C5", "全部"],
+      "blocks_to_user": false,
+      "status": "pending"
+    }
+  ]
+}

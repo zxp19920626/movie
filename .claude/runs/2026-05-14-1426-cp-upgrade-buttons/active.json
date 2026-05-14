@@ -1,0 +1,11 @@
+{
+  "run_id": "2026-05-14-1426-cp-upgrade-buttons",
+  "status": "running",
+  "redblue_decision": "GO_with_5_constraints",
+  "started_at": "2026-05-14T06:26:35Z",
+  "title": "cp 模块升级规则增强：popup_buttons 多按钮 + Play 渠道硬约束 + Admin UI 编辑器",
+  "milestone_idx": 4,
+  "milestone_count": 4,
+  "current_milestone": "M4",
+  "milestones_done": ["M1", "M2", "M3"]
+}
