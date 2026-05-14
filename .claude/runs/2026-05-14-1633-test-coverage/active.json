@@ -3,6 +3,5 @@
   "status": "completed",
   "completed_at": "2026-05-14T08:55:00Z",
   "started_at": "2026-05-14T08:33:51Z",
-  "title": "测试覆盖补齐：A 红线集成测试 3 项 + B 单测补齐 6 项",
-  "scope": "backend tests only (no production code, no Android)"
+  "title": "测试覆盖补齐 A+B (9 项)"
 }
