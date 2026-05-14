@@ -159,13 +159,13 @@ class SecondaryReviewAction(BaseModel):
 
 
 class SecondaryReviewOut(BaseModel):
-    video_id: int
+    video_id: int = Field(validation_alias="id")
     secondary_review_status: str
     secondary_reviewed_by: int | None
     secondary_reviewed_at: datetime | None
     secondary_review_note: str
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 # ===== App 端公开 schemas（按用户 country/lang 选 i18n，剔除内部字段）=====

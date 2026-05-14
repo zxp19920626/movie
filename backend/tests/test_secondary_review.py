@@ -13,9 +13,9 @@
 
 非法路径（任何不在合法集中的迁移）→ 400。
 
-注意：发现 production bug — SecondaryReviewOut(model_validate(v)) 会缺 video_id
-（schema 期望 video_id, 但 CtVideo 字段叫 id）。本测试不修代码，把 happy-path
-通过查 DB 状态来验证（不走 response body）；非法路径走 400/422/404 不触 bug。
+原 production bug — SecondaryReviewOut(model_validate(v)) 缺 video_id 字段（schema 期望
+video_id 但 CtVideo 字段叫 id）已在 schemas.py 用 validation_alias='id' 修复。本文件
+保留原 DB 状态断言用例 + 增加 response_body 用例验证修复。
 """
 
 from __future__ import annotations
@@ -113,7 +113,7 @@ def test_transition_table_rejected_only_submit():
     assert _REVIEW_TRANSITIONS["rejected"] == {"submit"}
 
 
-# ---------------- 合法路径（DB 状态验证；happy-path 端点 500 是 schema bug） ----------------
+# ---------------- 合法路径（response body + DB 状态双验证） ----------------
 
 
 def test_draft_to_pending_via_submit_updates_db(
@@ -121,11 +121,14 @@ def test_draft_to_pending_via_submit_updates_db(
 ):
     v = _new_video(db, status="draft")
     db.commit()
-    client.post(
+    resp = client.post(
         f"/api/v1/admin/content/videos/{v.id}/secondary-review",
         json={"action": "submit", "note": "ready to review"},
     )
-    # commit 在 try return 之前；不论 response 序列化是否 500，DB 已落库
+    assert resp.status_code == 200, f"response body bug 已修复，应 200 不再 500: {resp.text}"
+    body = resp.json()
+    assert body["video_id"] == v.id, "response video_id 应等于 CtVideo.id（schema alias 修复）"
+    assert body["secondary_review_status"] == "pending"
     db.expire_all()
     after = db.get(CtVideo, v.id)
     assert after is not None
