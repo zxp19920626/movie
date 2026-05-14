@@ -60,11 +60,11 @@ def apply_public_filters(stmt: Select, *, country: str | None) -> Select:
     - status=online 上线
     - secondary_review_status=approved 通过二审
     - vod_status=ready 转码 OK（短片/电影直挂；剧集走 episode 自身 vod_status）
-    - 地区可见性：
-        * 若 video 0 行 region_visibility → 视为对所有国家可见（早期默认开放）
-        * 若有行 → 必须包含 (country=user.country AND visible=true)
+    - 地区可见性（红线 #8 默认 false / 黑名单制 / 运营必须手动开启每个国家）：
+        * 必须存在 (video_id, country=user.country, visible=true) 行
+        * 没行 → 不可见（不再 fallthrough 全开放）
+        * country 缺失（user 没传） → 不可见
     """
-    has_any_region = exists().where(CtRegionVisibility.video_id == CtVideo.id).correlate(CtVideo)
     has_visible_for_country = (
         exists()
         .where(
@@ -80,25 +80,24 @@ def apply_public_filters(stmt: Select, *, country: str | None) -> Select:
         CtVideo.secondary_review_status == "approved",
         CtVideo.vod_status == "ready",
     )
-    # 0 行 OR 该国家可见
-    stmt = stmt.where((~has_any_region) | has_visible_for_country)
+    # 红线 #8：默认 false / 黑名单制 — 必须有 (video, country, visible=true) 行才可见
+    stmt = stmt.where(has_visible_for_country)
     return stmt
 
 
 def is_video_visible_for(db: Session, video: CtVideo, country: str | None) -> bool:
-    """单条命中检查（详情页用）。"""
+    """单条命中检查（详情页用）。红线 #8：缺行 = 不可见。"""
     if video.status != "online" or video.secondary_review_status != "approved":
         return False
     if video.vod_status != "ready":
         return False
-    rows = db.scalar(select(exists().where(CtRegionVisibility.video_id == video.id)))
-    if not rows:
-        return True
+    if not country:
+        return False  # 红线 #8：country 缺失 = 不可见
     visible = db.scalar(
         select(
             exists().where(
                 CtRegionVisibility.video_id == video.id,
-                CtRegionVisibility.country_code == (country or "").upper(),
+                CtRegionVisibility.country_code == country.upper(),
                 CtRegionVisibility.visible.is_(True),
             )
         )

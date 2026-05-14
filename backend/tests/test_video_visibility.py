@@ -4,9 +4,11 @@
 - apply_public_filters：列表 SQL 过滤
 - is_video_visible_for：单条命中检查
 
-注意：当前实现是「0 行 region_visibility → 全国家可见（白名单缺失=放开）」，
-和 model docstring「缺行视作不可见（默认黑名单制）」不一致；
-本测试按**实现实际行为**写，并在用例 doc 标出此 spec/代码分歧（见任务汇报）。
+红线 #8 实现（黑名单制 / 默认 false）：
+- 必须有 (video, country, visible=true) 行才可见
+- 缺行 → 不可见
+- country=None → 不可见
+本测试已对齐红线 #8 修复后的行为。
 """
 
 from __future__ import annotations
@@ -48,8 +50,11 @@ def _new_video(
 
 @pytest.fixture
 def video_visible_all(db: Session) -> CtVideo:
-    """完全合规的影片：online + approved + vod=ready + 没有 region 行。"""
-    return _new_video(db, code=f"vid-ok-{datetime.now(UTC).timestamp()}")
+    """完全合规的影片：online + approved + vod=ready + US 显式开 visible（红线 #8 默认 false）。"""
+    v = _new_video(db, code=f"vid-ok-{datetime.now(UTC).timestamp()}")
+    db.add(CtRegionVisibility(video_id=v.id, country_code="US", visible=True))
+    db.flush()
+    return v
 
 
 @pytest.fixture
@@ -140,13 +145,21 @@ def test_list_region_no_matching_country_hidden(
     assert video_with_region_rows.id not in ids
 
 
-def test_list_country_none_no_region_rows_visible(
+def test_list_country_none_invisible(
     db: Session, video_visible_all: CtVideo
 ):
-    """country=None 且没 region 行 → 可见（早期默认开放）。"""
+    """红线 #8：country=None → 不可见（user 没传 country 不放）。"""
     stmt = apply_public_filters(select(CtVideo), country=None)
     ids = {v.id for v in db.scalars(stmt).all()}
-    assert video_visible_all.id in ids
+    assert video_visible_all.id not in ids
+
+
+def test_list_video_without_any_region_row_invisible(db: Session):
+    """红线 #8：没 region_visibility 行 → 默认不可见（黑名单制）。"""
+    v = _new_video(db, code=f"vid-no-region-{datetime.now(UTC).timestamp()}")
+    stmt = apply_public_filters(select(CtVideo), country="US")
+    ids = {v2.id for v2 in db.scalars(stmt).all()}
+    assert v.id not in ids
 
 
 # ---------------- is_video_visible_for：单条命中 ----------------
