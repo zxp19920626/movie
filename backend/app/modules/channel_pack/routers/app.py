@@ -8,38 +8,17 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.modules.channel_pack.adapters.object_store import get_default_store
 from app.modules.channel_pack.models import CpApkSigningJob, CpAppVersion
-from app.modules.channel_pack.schemas import UpgradeCheckResponse
+from app.modules.channel_pack.schemas import PopupButtonResolved, UpgradeCheckResponse
 from app.modules.channel_pack.services.app_registry import get_app_by_uuid
 from app.modules.channel_pack.services.hmac_verifier import (
     verify_signature,
     verify_timestamp,
 )
+from app.modules.channel_pack.services.i18n_fallback import choose_locale, pick_i18n
+from app.modules.channel_pack.services.popup_button_resolver import resolve_popup_buttons
 from app.modules.channel_pack.services.upgrade_engine import check_upgrade
 
 router = APIRouter()
-
-
-def _pick_i18n(d: dict[str, str], country: str, default_locale: str = "en") -> str:
-    """简单按国家挑语言：country='ID' → 'id'，country='VN' → 'vi' 之类，找不到回 en"""
-    if not d:
-        return ""
-    country_to_locale = {
-        "ID": "id",
-        "VN": "vi",
-        "PH": "en",
-        "TH": "th",
-        "BR": "pt",
-        "AR": "es",
-        "MX": "es",
-        "CL": "es",
-        "EG": "ar",
-        "SA": "ar",
-        "AE": "ar",
-        "NG": "en",
-        "ZA": "en",
-    }
-    locale = country_to_locale.get((country or "").upper(), default_locale)
-    return d.get(locale) or d.get(default_locale) or next(iter(d.values()), "")
 
 
 @router.get("/healthz")
@@ -84,6 +63,10 @@ def upgrade_check(
 
     download_url = get_default_store().public_url(signed.output_oss_key)
 
+    accept_language = request.headers.get("Accept-Language")
+    locales = choose_locale(country, accept_language)
+    resolved_buttons = resolve_popup_buttons(rule.popup_buttons or [], locales)
+
     return UpgradeCheckResponse(
         has_update=True,
         target_version_code=target.version_code,
@@ -92,13 +75,14 @@ def upgrade_check(
         can_skip=rule.can_skip,
         popup_strategy=rule.popup_strategy,
         popup_interval_hours=rule.popup_interval_hours,
-        popup_title=_pick_i18n(rule.popup_title_i18n, country),
-        popup_content=_pick_i18n(rule.popup_content_i18n, country),
-        confirm_text=_pick_i18n(rule.confirm_text_i18n, country),
-        cancel_text=_pick_i18n(rule.cancel_text_i18n, country),
+        popup_title=pick_i18n(rule.popup_title_i18n, locales) or "",
+        popup_content=pick_i18n(rule.popup_content_i18n, locales) or "",
+        confirm_text=pick_i18n(rule.confirm_text_i18n, locales) or "",
+        cancel_text=pick_i18n(rule.cancel_text_i18n, locales) or "",
         download_url=download_url,
         sha256=signed.output_sha256,
         size=signed.output_size,
+        popup_buttons=[PopupButtonResolved(**b) for b in resolved_buttons],
     )
 
 
