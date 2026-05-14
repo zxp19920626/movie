@@ -297,6 +297,49 @@ ssh ecs "docker tag movie-backend:vN-1 movie-backend:current && docker compose u
 
 ---
 
+## 9.5 地区可见性运营 SOP（红线 #8 强约束）
+
+**重要变更（2026-05-14 修复）**：`ct_region_visibility` 现行严格黑名单制。**任何影片没有显式配置可见国家行 = 在所有国家都不可见**。
+
+### 上架新影片必走流程
+
+1. 内容运营创建影片（status=draft）
+2. 通过二审（secondary_review_status=approved）
+3. VOD 转码完成（vod_status=ready）
+4. **必做**：在"地区可见性"面板逐国勾选 visible=true（按内容合规分级，如：
+   - 普通片：东南亚 4 国 + 拉美 + 非洲 全开
+   - 涉酒：中东 / 沙特 关
+   - 涉赌：印尼 关
+   - LGBT 相关：马来 关
+   - 涉毒：巴西 关）
+5. status=online 上线
+
+**若步骤 4 遗忘** → C 端用户在所有国家都看不到该影片 → 运营/客服会收到"看不到新片"投诉。
+
+### 影片"我看不到"应急
+
+| 现象 | 排查 |
+|---|---|
+| 单个用户看不到 | 查用户 country 字段 → 看该影片在该国是否 visible=true 行 |
+| 全部用户看不到（新片刚上） | 检查 ct_region_visibility 有没有任何 visible=true 行 → 没有就是运营漏配 |
+| App 端拉接口无返回 | 看接口请求是否带 country 参数；country=None 一律不可见 |
+
+### 批量降级（生产应急用，慎用）
+
+如运营**确实**需要让某影片对所有国家可见（如全球突发新闻片），运行 SQL：
+
+```sql
+-- 把影片 video_id=X 在 9 个核心国家全开
+INSERT INTO ct_region_visibility (video_id, country_code, visible)
+VALUES
+  (X, 'ID', true), (X, 'VN', true), (X, 'PH', true), (X, 'TH', true),
+  (X, 'BR', true), (X, 'MX', true), (X, 'AR', true), (X, 'EG', true), (X, 'SA', true);
+```
+
+未来 admin-web 应加"批量地区开放"按钮。
+
+---
+
 ## 10. 演练（**每季度做一次，不演练 = 等于没有**）
 
 - 模拟 RDS 主备切换：实际点切换按钮，看应用多久恢复
