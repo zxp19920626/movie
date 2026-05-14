@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { cpApi } from '../api'
 import { useCpStore } from '../stores/cp'
-import type { AppCreateResponse, CpApp } from '../types'
+import { HOST_REGEX, type AppCreateResponse, type CpApp } from '../types'
+import { ApiError } from '@/shared/api/client'
 
 const cpStore = useCpStore()
 const loading = ref(false)
@@ -13,6 +14,31 @@ const submitting = ref(false)
 
 const secretsDialog = ref(false)
 const secretsData = ref<AppCreateResponse | null>(null)
+
+// 白名单管理 dialog
+const whitelistDialog = ref(false)
+const whitelistApp = ref<CpApp | null>(null)
+const whitelistHosts = ref<string[]>([])
+const whitelistNewHost = ref('')
+const whitelistSaving = ref(false)
+const whitelistConflict = ref<
+  { rule_id: number; rule_name: string; host: string }[] | null
+>(null)
+
+const whitelistNewHostError = computed(() => {
+  const raw = whitelistNewHost.value
+  const v = raw.trim()
+  if (!v) return ''
+  if (v !== v.toLowerCase()) return '格式错误：不能含大写字母'
+  if (/[:/\s]|:\/\//.test(v)) return '格式错误：不能含 scheme（https://）、路径或端口'
+  if (!HOST_REGEX.test(v)) return '格式错误：必须是纯域名（如 cdn.example.com）'
+  if (whitelistHosts.value.includes(v)) return '已存在'
+  return ''
+})
+
+const whitelistAddDisabled = computed(() => {
+  return !whitelistNewHost.value.trim() || whitelistNewHostError.value !== ''
+})
 
 async function refresh() {
   loading.value = true
@@ -93,7 +119,68 @@ function copy(text: string) {
   ElMessage.success('已复制')
 }
 
+function openWhitelist(app: CpApp) {
+  whitelistApp.value = app
+  whitelistHosts.value = [...(app.allowed_upgrade_hosts || [])]
+  whitelistNewHost.value = ''
+  whitelistConflict.value = null
+  whitelistDialog.value = true
+}
+
+function addHost() {
+  const v = whitelistNewHost.value.trim()
+  if (!v || whitelistAddDisabled.value) return
+  whitelistHosts.value.push(v)
+  whitelistNewHost.value = ''
+}
+
+function removeHost(idx: number) {
+  whitelistHosts.value.splice(idx, 1)
+}
+
+async function saveWhitelist() {
+  if (!whitelistApp.value) return
+  whitelistSaving.value = true
+  whitelistConflict.value = null
+  try {
+    await cpApi.updateApp(whitelistApp.value.id, {
+      allowed_upgrade_hosts: whitelistHosts.value,
+    } as Parameters<typeof cpApi.updateApp>[1])
+    ElMessage.success('已保存')
+    await cpStore.refreshApps()
+    whitelistDialog.value = false
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 409) {
+      const d = e.detail as
+        | { affected_rules?: { rule_id: number; rule_name: string; host: string }[] }
+        | undefined
+      if (d && Array.isArray(d.affected_rules) && d.affected_rules.length > 0) {
+        whitelistConflict.value = d.affected_rules
+      } else {
+        ElMessage.error(e.message)
+      }
+    } else {
+      ElMessage.error((e as Error).message)
+    }
+  } finally {
+    whitelistSaving.value = false
+  }
+}
+
 onMounted(refresh)
+
+defineExpose({
+  openWhitelist,
+  whitelistDialog,
+  whitelistHosts,
+  whitelistNewHost,
+  whitelistNewHostError,
+  whitelistAddDisabled,
+  whitelistConflict,
+  addHost,
+  removeHost,
+  saveWhitelist,
+})
 </script>
 
 <template>
@@ -124,13 +211,14 @@ onMounted(refresh)
           <el-tag :type="row.status === 'active' ? 'success' : 'info'">{{ row.status }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="320">
+      <el-table-column label="操作" width="420">
         <template #default="{ row }">
           <el-button
             size="small"
             :type="cpStore.currentAppId === row.id ? 'success' : 'primary'"
             @click="selectApp(row)"
           >{{ cpStore.currentAppId === row.id ? '已选中' : '选为当前' }}</el-button>
+          <el-button size="small" @click="openWhitelist(row)" data-testid="btn-whitelist">白名单</el-button>
           <el-button size="small" @click="regenerate(row)">重生密钥</el-button>
           <el-button size="small" type="danger" @click="remove(row)">删除</el-button>
         </template>
@@ -178,6 +266,82 @@ onMounted(refresh)
     </div>
     <template #footer>
       <el-button type="primary" @click="secretsDialog = false">已保存，关闭</el-button>
+    </template>
+  </el-dialog>
+
+  <!-- 白名单管理对话框 -->
+  <el-dialog
+    v-model="whitelistDialog"
+    :title="`升级 URL 白名单 — ${whitelistApp?.name ?? ''}`"
+    width="640px"
+    :close-on-click-modal="false"
+  >
+    <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px">
+      只有列在白名单的域名才会作为升级弹窗按钮 URL 被下发；缩短白名单时如果有规则正在引用相关域名会被拒绝，需先去「规则管理」清理。
+    </el-alert>
+
+    <div style="display: flex; gap: 8px; margin-bottom: 8px">
+      <el-input
+        v-model="whitelistNewHost"
+        placeholder="如：cdn.example.com"
+        data-testid="input-new-host"
+        @keyup.enter="addHost"
+      />
+      <el-button
+        type="primary"
+        :disabled="whitelistAddDisabled"
+        data-testid="btn-add-host"
+        @click="addHost"
+      >添加</el-button>
+    </div>
+    <p
+      v-if="whitelistNewHostError"
+      data-testid="host-hint"
+      style="color: var(--el-color-danger); margin: 0 0 8px; font-size: 12px"
+    >{{ whitelistNewHostError }}</p>
+
+    <el-table :data="whitelistHosts.map((h, idx) => ({ host: h, idx }))" border>
+      <el-table-column label="域名" prop="host" />
+      <el-table-column label="操作" width="100">
+        <template #default="{ row }">
+          <el-button
+            size="small"
+            type="danger"
+            link
+            :data-testid="`btn-remove-${row.idx}`"
+            @click="removeHost(row.idx)"
+          >删除</el-button>
+        </template>
+      </el-table-column>
+      <template #empty>
+        <span style="color: var(--el-text-color-secondary)">还未添加任何域名</span>
+      </template>
+    </el-table>
+
+    <el-alert
+      v-if="whitelistConflict && whitelistConflict.length > 0"
+      type="error"
+      :closable="false"
+      show-icon
+      style="margin-top: 12px"
+      data-testid="conflict-alert"
+    >
+      <p style="margin: 0 0 4px"><strong>无法保存：有规则正在引用即将被删除的域名。请先去「规则管理」清理这些规则后再保存白名单。</strong></p>
+      <ul style="margin: 4px 0 0 16px">
+        <li v-for="r in whitelistConflict" :key="r.rule_id">
+          规则 #{{ r.rule_id }} 「{{ r.rule_name }}」引用了 <code>{{ r.host }}</code>
+        </li>
+      </ul>
+    </el-alert>
+
+    <template #footer>
+      <el-button @click="whitelistDialog = false">取消</el-button>
+      <el-button
+        type="primary"
+        :loading="whitelistSaving"
+        data-testid="btn-save-whitelist"
+        @click="saveWhitelist"
+      >保存</el-button>
     </template>
   </el-dialog>
 </template>

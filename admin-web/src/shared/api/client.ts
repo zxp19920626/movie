@@ -17,6 +17,17 @@ export interface ApiOptions {
   headers?: Record<string, string>
 }
 
+export class ApiError extends Error {
+  status: number
+  detail: unknown
+  constructor(message: string, status: number, detail: unknown) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.detail = detail
+  }
+}
+
 async function request<T = unknown>(path: string, opts: ApiOptions = {}): Promise<T> {
   const auth = useAuthStore()
   const headers: Record<string, string> = {
@@ -35,9 +46,15 @@ async function request<T = unknown>(path: string, opts: ApiOptions = {}): Promis
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     if (res.status === 401) auth.logout()
-    const err = data as { detail?: string; error?: string; code?: string }
-    const msg = err.detail || err.error || `HTTP ${res.status}`
-    throw new Error(msg)
+    const err = data as { detail?: unknown; error?: unknown; code?: string }
+    const rawDetail = err.detail
+    let msg: string
+    if (typeof rawDetail === 'string') msg = rawDetail
+    else if (rawDetail && typeof rawDetail === 'object' && 'message' in rawDetail && typeof (rawDetail as { message: unknown }).message === 'string') {
+      msg = (rawDetail as { message: string }).message
+    } else if (typeof err.error === 'string') msg = err.error
+    else msg = `HTTP ${res.status}`
+    throw new ApiError(msg, res.status, rawDetail)
   }
   return data as T
 }

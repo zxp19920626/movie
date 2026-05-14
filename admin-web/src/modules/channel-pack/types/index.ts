@@ -19,6 +19,39 @@ export const POPUP_STRATEGY_LABELS: Record<PopupStrategy, string> = {
 
 export type SigningStrategy = 'walle' | 'none' | 'play_signed'
 
+// PopupButton type 5 枚举（与 backend/app/modules/channel_pack/schemas.py:63 严格一致）
+export type PopupButtonType = 'browser' | 'playstore' | 'inapp_apk' | 'deeplink' | 'none'
+
+export const POPUP_BUTTON_TYPES: PopupButtonType[] = [
+  'browser',
+  'playstore',
+  'inapp_apk',
+  'deeplink',
+  'none',
+]
+
+export const POPUP_BUTTON_TYPE_LABELS: Record<PopupButtonType, string> = {
+  browser: '跳浏览器',
+  playstore: '跳 Google Play',
+  inapp_apk: '应用内下载 APK',
+  deeplink: '应用内跳转',
+  none: '无跳转（关闭）',
+}
+
+export type PopupButtonStyle = 'primary' | 'secondary' | 'danger'
+
+export interface PopupButton {
+  id: string
+  type: PopupButtonType
+  text_i18n: Record<string, string>
+  url_i18n: Record<string, string> | null
+  style?: PopupButtonStyle | null
+  target?: Record<string, string> | null
+}
+
+// Host 校验正则（与 backend/app/modules/channel_pack/schemas.py:HOST_REGEX 一致）
+export const HOST_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/
+
 export interface CpApp {
   id: number
   tenant_uuid: string
@@ -26,6 +59,7 @@ export interface CpApp {
   package_name: string
   owner_admin_user_id: number
   status: string
+  allowed_upgrade_hosts: string[]
   created_at: string
 }
 
@@ -95,6 +129,7 @@ export interface CpRule {
   popup_content_i18n: Record<string, string>
   confirm_text_i18n: Record<string, string>
   cancel_text_i18n: Record<string, string>
+  popup_buttons: PopupButton[]
   priority: number
   effective_from: string | null
   effective_to: string | null
