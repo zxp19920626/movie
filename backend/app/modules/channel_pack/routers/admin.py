@@ -61,6 +61,9 @@ from app.modules.channel_pack.schemas import (
     VersionOut,
 )
 from app.modules.channel_pack.services.app_registry import invalidate
+from app.modules.channel_pack.services.play_store_toggle_guard import (
+    rescan_rules_for_play_store_violations,
+)
 from app.modules.channel_pack.services.signing_service import fan_out_signing_jobs
 from app.modules.channel_pack.services.upgrade_engine import check_upgrade
 from app.modules.channel_pack.services.upgrade_rule_validator import (
@@ -226,6 +229,32 @@ def update_channel(
     channel = db.get(CpChannel, channel_id)
     if channel is None or channel.app_id != app.id:
         raise HTTPException(404, "channel not found")
+
+    # C1 兜底：is_play_store False→True 切换前回溯扫存量规则
+    if payload.is_play_store is True and channel.is_play_store is False:
+        candidate = CpChannel(
+            id=channel.id,
+            app_id=channel.app_id,
+            code=channel.code,
+            name=channel.name,
+            is_play_store=True,
+            signing_strategy=channel.signing_strategy,
+            enabled=channel.enabled,
+            priority=channel.priority,
+        )
+        violations = rescan_rules_for_play_store_violations(db, app.id, candidate)
+        if violations:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "切换前请清理违规规则",
+                    "violations": [
+                        {"rule_id": v.rule_id, "rule_name": v.rule_name, "reason": v.reason}
+                        for v in violations
+                    ],
+                },
+            )
+
     for f in ("name", "is_play_store", "signing_strategy", "enabled", "priority"):
         v = getattr(payload, f)
         if v is not None:
