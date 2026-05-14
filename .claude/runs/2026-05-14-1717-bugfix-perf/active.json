@@ -3,5 +3,5 @@
   "status": "completed",
   "completed_at": "2026-05-14T09:55:00Z",
   "started_at": "2026-05-14T09:17:49Z",
-  "title": "Bug 1 修复 + Bug 2 修复（红线 #8 兜底）+ C 性能压测基线"
+  "stages": ["bug1_secondary_review_out", "bug2_region_visibility_default_false", "c_perf_baseline"]
 }
