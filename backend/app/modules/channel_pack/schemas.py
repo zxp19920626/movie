@@ -18,6 +18,30 @@ POPUP_STRATEGIES = Literal[
 # ISO 639-1（小写）+ 可选 -XX（大写国家后缀），如 "en" / "zh" / "en-US"
 _I18N_KEY_RE = re.compile(r"^[a-z]{2}(-[A-Z]{2})?$")
 
+# 纯域名：lowercase 字母/数字/连字符段，至少两段（含 TLD），不含 scheme/path/port
+HOST_REGEX = r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$"
+_HOST_RE = re.compile(HOST_REGEX)
+
+
+def _normalize_and_validate_hosts(v: list[str]) -> list[str]:
+    """schema 层归一化：strip + lowercase + 拒 scheme/path/port + 去重保序。"""
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for h in v:
+        h_lower = h.strip().lower()
+        if not h_lower:
+            continue
+        if "://" in h_lower or "/" in h_lower or ":" in h_lower or " " in h_lower:
+            raise ValueError(
+                f"host must be plain domain (no scheme/path/port): {h}"
+            )
+        if not _HOST_RE.match(h_lower):
+            raise ValueError(f"invalid host format: {h}")
+        if h_lower not in seen:
+            seen.add(h_lower)
+            normalized.append(h_lower)
+    return normalized
+
 
 def _validate_i18n_keys(d: dict[str, str], value_max_len: int) -> dict[str, str]:
     for k, v in d.items():
@@ -68,12 +92,26 @@ class AppCreate(BaseModel):
     name: str = Field(min_length=1, max_length=128)
     package_name: str = Field(min_length=3, max_length=255)
     owner_admin_user_id: int | None = None  # super_admin 可指定，否则用当前 admin
+    allowed_upgrade_hosts: list[str] = Field(default_factory=list, max_length=50)
+
+    @field_validator("allowed_upgrade_hosts")
+    @classmethod
+    def _normalize_and_validate_hosts(cls, v: list[str]) -> list[str]:
+        return _normalize_and_validate_hosts(v)
 
 
 class AppUpdate(BaseModel):
     name: str | None = None
     package_name: str | None = None
     status: Literal["active", "suspended"] | None = None
+    allowed_upgrade_hosts: list[str] | None = Field(default=None, max_length=50)
+
+    @field_validator("allowed_upgrade_hosts")
+    @classmethod
+    def _normalize_and_validate_hosts(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return v
+        return _normalize_and_validate_hosts(v)
 
 
 class AppOut(BaseModel):
@@ -84,6 +122,7 @@ class AppOut(BaseModel):
     package_name: str
     owner_admin_user_id: int
     status: str
+    allowed_upgrade_hosts: list[str] = Field(default_factory=list)
     created_at: datetime
 
 
